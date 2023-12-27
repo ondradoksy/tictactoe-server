@@ -1,15 +1,20 @@
-use serde::{ Serialize, Deserialize };
+use std::sync::mpsc::Sender;
 
-#[derive(Copy, Clone)]
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
+use serde::Serialize;
+
+use crate::net::MessageEvent;
+
+#[derive(Serialize)]
 pub(crate) struct Player {
     pub id: u64,
+    #[serde(skip_serializing)]
+    pub tx: Sender<MessageEvent>,
 }
 impl Player {
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: u64, tx: Sender<MessageEvent>) -> Self {
         Self {
             id: id,
+            tx: tx,
         }
     }
 }
