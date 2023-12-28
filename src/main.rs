@@ -3,7 +3,7 @@ mod game;
 mod player;
 mod net;
 
-use std::io;
+use std::{ io, env };
 use std::net::{ TcpListener, TcpStream };
 use std::sync::{ Mutex, Arc, mpsc };
 use std::thread::spawn;
@@ -15,7 +15,10 @@ use crate::net::{ MessageEvent, GameParameters };
 
 /// A WebSocket echo server
 fn main() {
-    let server = TcpListener::bind("0.0.0.0:9001").unwrap();
+    let args: Vec<String> = env::args().collect();
+    let listen_ip = if args.len() > 1 { args[1].as_str() } else { "0.0.0.0:9001" };
+
+    let server = TcpListener::bind(listen_ip).unwrap();
     let mut player_id_counter: u64 = 0;
     let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::<Player>::new()));
     let games: Arc<Mutex<Vec<Game>>> = Arc::new(Mutex::new(Vec::<Game>::new()));
