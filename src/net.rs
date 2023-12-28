@@ -36,3 +36,17 @@ impl MessageEvent {
         self.event.as_str() == ""
     }
 }
+
+#[derive(Deserialize)]
+pub(crate) struct GameParameters {
+    pub size: (u32, u32),
+}
+impl GameParameters {
+    pub fn from_json(text: &str) -> Result<Self, &'static str> {
+        let result: Result<Self, serde_json::Error> = serde_json::from_str(text);
+        if result.is_ok() {
+            return Ok(result.unwrap());
+        }
+        Err("Malformed JSON")
+    }
+}

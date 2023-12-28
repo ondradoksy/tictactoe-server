@@ -8,28 +8,45 @@ use std::net::{ TcpListener, TcpStream };
 use std::sync::{ Mutex, Arc, mpsc };
 use std::thread::spawn;
 use std::time::Duration;
+use game::Game;
 use tungstenite::accept;
 use crate::player::Player;
-use crate::net::MessageEvent;
+use crate::net::{ MessageEvent, GameParameters };
 
 /// A WebSocket echo server
 fn main() {
     let server = TcpListener::bind("0.0.0.0:9001").unwrap();
-    let mut id_counter: u64 = 0;
+    let mut player_id_counter: u64 = 0;
     let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::<Player>::new()));
+    let games: Arc<Mutex<Vec<Game>>> = Arc::new(Mutex::new(Vec::<Game>::new()));
+    let game_id_counter: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
 
     for stream in server.incoming() {
         spawn({
             let players_clone = Arc::clone(&players);
+            let games_clone = Arc::clone(&games);
+            let game_id_counter_clone = Arc::clone(&game_id_counter);
             move || {
-                handle_connection(stream.unwrap(), id_counter, players_clone);
+                handle_connection(
+                    stream.unwrap(),
+                    player_id_counter,
+                    players_clone,
+                    games_clone,
+                    game_id_counter_clone
+                );
             }
         });
-        id_counter += 1;
+        player_id_counter += 1;
     }
 }
 
-fn handle_connection(stream: TcpStream, unique_id: u64, players: Arc<Mutex<Vec<Player>>>) {
+fn handle_connection(
+    stream: TcpStream,
+    unique_id: u64,
+    players: Arc<Mutex<Vec<Player>>>,
+    games: Arc<Mutex<Vec<Game>>>,
+    game_id_counter: Arc<Mutex<u64>>
+) {
     let addr = get_addr(&stream);
     println!("New connection: {}", addr);
 
@@ -76,15 +93,31 @@ fn handle_connection(stream: TcpStream, unique_id: u64, players: Arc<Mutex<Vec<P
 
             // Process events
             match event.event.as_str() {
+                // Get player list
                 "players" => {
                     let json = serde_json::to_string(&*players.lock().unwrap()).unwrap();
                     response = MessageEvent::new(&String::from("players"), &json);
                 }
+                // Broadcast message to all players
                 "broadcast" => {
                     let json = event.content;
                     for p in players.lock().unwrap().iter() {
                         p.tx.send(MessageEvent::new(&String::from("broadcast"), &json)).unwrap();
                     }
+                }
+                // Create new game
+                "create_game" => {
+                    let json = event.content;
+                    let game_parameters = GameParameters::from_json(json.as_str());
+                    if game_parameters.is_ok() {
+                        let game = Game::new(game_parameters.unwrap().size, &game_id_counter);
+                        games.lock().unwrap().push(game);
+                    }
+                }
+                // Get game list
+                "games" => {
+                    let json = serde_json::to_string(&*games.lock().unwrap()).unwrap();
+                    response = MessageEvent::new(&String::from("games"), &json);
                 }
                 _ => {}
             }
