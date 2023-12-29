@@ -19,10 +19,10 @@ fn main() {
     let listen_ip = if args.len() > 1 { args[1].as_str() } else { "0.0.0.0:9001" };
 
     let server = TcpListener::bind(listen_ip).unwrap();
-    let mut player_id_counter: u64 = 0;
+    let mut player_id_counter: u32 = 0;
     let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::<Player>::new()));
     let games: Arc<Mutex<Vec<Game>>> = Arc::new(Mutex::new(Vec::<Game>::new()));
-    let game_id_counter: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+    let game_id_counter: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
 
     for stream in server.incoming() {
         spawn({
@@ -45,10 +45,10 @@ fn main() {
 
 fn handle_connection(
     stream: TcpStream,
-    unique_id: u64,
+    unique_id: u32,
     players: Arc<Mutex<Vec<Player>>>,
     games: Arc<Mutex<Vec<Game>>>,
-    game_id_counter: Arc<Mutex<u64>>
+    game_id_counter: Arc<Mutex<u32>>
 ) {
     let addr = get_addr(&stream);
     println!("New connection: {}", addr);

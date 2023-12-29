@@ -10,7 +10,7 @@ impl Grid {
             moves: Vec::new(),
         }
     }
-    pub fn get_pos(&self, pos: (u32, u32)) -> u64 {
+    pub fn get_pos(&self, pos: (u32, u32)) -> u32 {
         let index = self.get_index(pos);
 
         if index.is_some() {
@@ -18,7 +18,7 @@ impl Grid {
         }
         0
     }
-    pub fn add(&mut self, player: u64, pos: (u32, u32)) {
+    pub fn add(&mut self, player: u32, pos: (u32, u32)) {
         self.moves.push(Move::new(player, pos));
     }
     fn get_index(&self, pos: (u32, u32)) -> Option<usize> {
@@ -30,11 +30,11 @@ impl Grid {
 }
 
 struct Move {
-    player: u64,
+    player: u32,
     position: (u32, u32),
 }
 impl Move {
-    pub fn new(player: u64, pos: (u32, u32)) -> Self {
+    pub fn new(player: u32, pos: (u32, u32)) -> Self {
         Self {
             player: player,
             position: pos,
