@@ -13,7 +13,7 @@ use game::Game;
 use tungstenite::accept;
 use crate::common::{ Size, get_object };
 use crate::player::Player;
-use crate::net::{ MessageEvent, GameCreationData, Status, GameJoinData, InternalMessage };
+use crate::net::{ MessageEvent, GameCreationData, Status, GameJoinData };
 
 /// A WebSocket echo server
 fn main() {
@@ -147,7 +147,6 @@ fn handle_connection(
                 }
                 // Join game
                 "join_game" => {
-                    // TODO: Implement joining
                     let join_data = GameJoinData::from_json(&event.content);
                     if join_data.is_ok() {
                         let id = join_data.unwrap().id;
@@ -155,11 +154,7 @@ fn handle_connection(
 
                         // Check if game exists
                         if game.is_some() {
-                            game.unwrap()
-                                .lock()
-                                .unwrap()
-                                .tx.send(InternalMessage::new_join(player_arc.clone()))
-                                .unwrap();
+                            game.unwrap().lock().unwrap().join_player(&player_arc);
                         } else {
                             response = MessageEvent::new(
                                 event.event,
@@ -177,8 +172,28 @@ fn handle_connection(
                 "move" => {
                     let json = event.content;
                     let position = Size::from_json(&json);
+
+                    // Check if json is valid
                     if position.is_ok() {
-                        // TODO: Implement moves
+                        let game = &player_arc.lock().unwrap().joined_game;
+
+                        // Check player is in a game
+                        if game.is_some() {
+                            let game_locked = game.as_ref().unwrap().lock().unwrap();
+                            if game_locked.add_move(&player_arc, position.unwrap()) {
+                                response = MessageEvent::new(event.event, Status::new("ok", ""));
+                            } else {
+                                response = MessageEvent::new(
+                                    event.event,
+                                    Status::new("error", "Move not allowed.")
+                                );
+                            }
+                        } else {
+                            response = MessageEvent::new(
+                                event.event,
+                                Status::new("error", "You are not in a game.")
+                            );
+                        }
                     } else {
                         response = MessageEvent::new(
                             event.event,

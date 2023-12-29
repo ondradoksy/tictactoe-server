@@ -1,4 +1,4 @@
-use jzon::{ self, object };
+use jzon::{ self, object, JsonValue::Null };
 use tungstenite::{ Message, WebSocket, stream::MaybeTlsStream };
 
 use crate::common::stop_server;
@@ -84,9 +84,12 @@ fn player_list() {
             parsed_content
                 .as_array()
                 .unwrap()
-                .contains(&(object! {
-            id: i
-        })),
+                .contains(
+                    &(object! {
+                    id: i,
+                    joined_game: Null
+        })
+                ),
             child
         );
 
@@ -206,7 +209,8 @@ fn games_list() {
                         id: i,
                         player_list: [],
                         creator: {
-                            id: 0
+                            id: 0,
+                            joined_game: Null
                         }
                     })
                 ),

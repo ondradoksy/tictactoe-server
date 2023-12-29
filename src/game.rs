@@ -43,14 +43,34 @@ impl Game {
         });
         arc
     }
+
     pub fn run(game: Arc<Mutex<Game>>, rx: Receiver<InternalMessage>) {
         for msg in rx.iter() {
             match msg.kind {
                 InternalMessageKind::PlayerJoin => {
                     game.lock().unwrap().player_list.push(msg.player);
                 }
+                InternalMessageKind::PlayerMove => {
+                    game.lock()
+                        .unwrap()
+                        .grid.add(msg.player.lock().unwrap().id, msg.position.unwrap());
+                }
             }
             println!("message");
         }
+    }
+
+    pub fn join_player(&self, player: &Arc<Mutex<Player>>) -> bool {
+        self.tx.send(InternalMessage::new_join(player.clone())).unwrap();
+        true
+    }
+
+    pub fn add_move(&self, player: &Arc<Mutex<Player>>, pos: Size) -> bool {
+        if !self.grid.is_valid_move(&pos) {
+            return false;
+        }
+        // TODO: Check if it's the player's turn.
+        self.tx.send(InternalMessage::new_move(player.clone(), pos)).unwrap();
+        true
     }
 }

@@ -60,6 +60,7 @@ impl GameJoinData {
 pub(crate) struct InternalMessage {
     pub kind: InternalMessageKind,
     pub player: Arc<Mutex<Player>>,
+    pub position: Option<Size>,
 }
 
 impl InternalMessage {
@@ -67,12 +68,21 @@ impl InternalMessage {
         Self {
             kind: InternalMessageKind::PlayerJoin,
             player: player,
+            position: None,
+        }
+    }
+    pub fn new_move(player: Arc<Mutex<Player>>, pos: Size) -> Self {
+        Self {
+            kind: InternalMessageKind::PlayerMove,
+            player: player,
+            position: Some(pos),
         }
     }
 }
 
 pub(crate) enum InternalMessageKind {
     PlayerJoin,
+    PlayerMove,
 }
 
 #[derive(Serialize)]
