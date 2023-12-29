@@ -3,7 +3,7 @@ use std::{
     process::{ Child, Stdio, ChildStdout },
     thread,
     time,
-    io::{ BufReader, BufRead, Stdout, Read, Lines },
+    io::{ BufReader, BufRead, Lines },
 };
 
 use tungstenite::{ client::connect, WebSocket, stream::MaybeTlsStream };

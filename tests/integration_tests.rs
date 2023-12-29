@@ -204,9 +204,10 @@ fn games_list() {
                 .contains(
                     &(object! {
                         id: i,
-                        player_list: [
-
-                        ]
+                        player_list: [],
+                        creator: {
+                            id: 0
+                        }
                     })
                 ),
             child

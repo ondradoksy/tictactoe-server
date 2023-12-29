@@ -11,8 +11,9 @@ use std::thread::spawn;
 use std::time::Duration;
 use game::Game;
 use tungstenite::accept;
+use crate::common::{ Size, get_object };
 use crate::player::Player;
-use crate::net::{ MessageEvent, GameParameters, Status };
+use crate::net::{ MessageEvent, GameCreationData, Status, GameJoinData, InternalMessage };
 
 /// A WebSocket echo server
 fn main() {
@@ -23,7 +24,9 @@ fn main() {
     println!("Listening on {}", listen_ip);
 
     let mut player_id_counter: u32 = 0;
-    let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::<Player>::new()));
+    let players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>> = Arc::new(
+        Mutex::new(Vec::<Arc<Mutex<Player>>>::new())
+    );
     let games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>> = Arc::new(
         Mutex::new(Vec::<Arc<Mutex<Game>>>::new())
     );
@@ -51,7 +54,7 @@ fn main() {
 fn handle_connection(
     stream: TcpStream,
     unique_id: u32,
-    players: Arc<Mutex<Vec<Player>>>,
+    players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
     games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>>,
     game_id_counter: Arc<Mutex<u32>>
 ) {
@@ -64,8 +67,10 @@ fn handle_connection(
     // Create channel
     let (tx, rx) = mpsc::channel();
 
+    let player_arc = Arc::new(Mutex::new(Player::new(unique_id, tx)));
+
     // Add new player to list
-    players.lock().unwrap().push(Player::new(unique_id, tx));
+    players.lock().unwrap().push(player_arc.clone());
 
     let mut websocket = accept(stream).unwrap();
 
@@ -110,20 +115,27 @@ fn handle_connection(
                 "broadcast" => {
                     let json = event.content;
                     for p in players.lock().unwrap().iter() {
-                        p.tx.send(MessageEvent::new(&String::from("broadcast"), &json)).unwrap();
+                        p.lock()
+                            .unwrap()
+                            .tx.send(MessageEvent::new(&String::from("broadcast"), &json))
+                            .unwrap();
                     }
                 }
                 // Create new game
                 "create_game" => {
                     let json = event.content;
-                    let game_parameters = GameParameters::from_json(json.as_str());
+                    let game_parameters = GameCreationData::from_json(json.as_str());
                     if game_parameters.is_ok() {
-                        let game = Game::new(game_parameters.unwrap().size, &game_id_counter);
+                        let game = Game::new(
+                            game_parameters.unwrap().size,
+                            &game_id_counter,
+                            player_arc.clone()
+                        );
                         games.lock().unwrap().push(game);
                         response = MessageEvent::new("create_game", Status::new("ok", ""));
                     } else {
                         response = MessageEvent::new(
-                            "create_game",
+                            event.event,
                             Status::new("error", game_parameters.err().unwrap().to_string())
                         );
                     }
@@ -133,7 +145,53 @@ fn handle_connection(
                     let json = serde_json::to_string(&*games.lock().unwrap()).unwrap();
                     response = MessageEvent::new(&String::from("games"), &json);
                 }
-                _ => {}
+                // Join game
+                "join_game" => {
+                    // TODO: Implement joining
+                    let join_data = GameJoinData::from_json(&event.content);
+                    if join_data.is_ok() {
+                        let id = join_data.unwrap().id;
+                        let game = get_object(&games, |p| p.lock().unwrap().id == id);
+
+                        // Check if game exists
+                        if game.is_some() {
+                            game.unwrap()
+                                .lock()
+                                .unwrap()
+                                .tx.send(InternalMessage::new_join(player_arc.clone()))
+                                .unwrap();
+                        } else {
+                            response = MessageEvent::new(
+                                event.event,
+                                Status::new("error", "Game does not exist.")
+                            );
+                        }
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", join_data.err().unwrap().to_string())
+                        );
+                    }
+                }
+                // Make move
+                "move" => {
+                    let json = event.content;
+                    let position = Size::from_json(&json);
+                    if position.is_ok() {
+                        // TODO: Implement moves
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", position.err().unwrap().to_string())
+                        );
+                    }
+                }
+                _ => {
+                    response = MessageEvent::new(
+                        event.event,
+                        Status::new("error", "Unknown event.")
+                    );
+                }
             }
 
             // Respond to current request first (might be best to remove in the future)
@@ -145,15 +203,17 @@ fn handle_connection(
         }
     }
 
+    // Remove player from list
     println!("Removing player {}", unique_id);
     let mut players_locked = players.lock().unwrap();
     let index = players_locked
         .iter()
-        .position(|p| p.id == unique_id)
+        .position(|p| p.lock().unwrap().id == unique_id)
         .unwrap();
     players_locked.swap_remove(index);
     drop(players_locked);
 
+    // Properly close the connection
     println!("Closing connection {}", addr);
     let close = websocket.close(None);
     if close.is_err() {

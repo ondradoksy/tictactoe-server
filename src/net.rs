@@ -1,9 +1,9 @@
-use std::ops::Deref;
+use std::sync::{ Arc, Mutex };
 
 use serde::{ Serialize, Deserialize };
 use tungstenite::Message;
 
-use crate::common::Size;
+use crate::{ common::{ Size, from_json }, player::Player };
 
 #[derive(Deserialize, Serialize)]
 pub(crate) struct MessageEvent {
@@ -38,31 +38,41 @@ impl MessageEvent {
 }
 
 #[derive(Deserialize)]
-pub(crate) struct GameParameters {
+pub(crate) struct GameCreationData {
     pub size: Size,
 }
-impl GameParameters {
+impl GameCreationData {
+    pub fn from_json(text: &str) -> Result<Self, String> {
+        from_json(text)
+    }
+}
+
+#[derive(Deserialize)]
+pub(crate) struct GameJoinData {
+    pub id: u32,
+}
+impl GameJoinData {
     pub fn from_json(text: &str) -> Result<Self, String> {
         from_json(text)
     }
 }
 
 pub(crate) struct InternalMessage {
-    pub message_type: InternalMessageType,
+    pub kind: InternalMessageKind,
+    pub player: Arc<Mutex<Player>>,
 }
 
-pub(crate) enum InternalMessageType {
-    placeholder1,
-    placeholder2,
-}
-
-fn from_json<T>(text: &str) -> Result<T, String> where T: serde::de::DeserializeOwned {
-    let result: Result<T, serde_json::Error> = serde_json::from_str(text);
-    if result.is_ok() {
-        return Ok(result.unwrap());
+impl InternalMessage {
+    pub fn new_join(player: Arc<Mutex<Player>>) -> Self {
+        Self {
+            kind: InternalMessageKind::PlayerJoin,
+            player: player,
+        }
     }
-    let err_string = result.err().unwrap().to_string();
-    Err(err_string)
+}
+
+pub(crate) enum InternalMessageKind {
+    PlayerJoin,
 }
 
 #[derive(Serialize)]
