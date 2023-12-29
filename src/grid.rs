@@ -11,7 +11,7 @@ impl Grid {
         }
     }
     pub fn get_pos(&self, pos: (u32, u32)) -> u64 {
-        let index = self.moves.iter().position(|m| m.position == pos);
+        let index = self.get_index(pos);
 
         if index.is_some() {
             return self.moves[index.unwrap()].player;
@@ -20,6 +20,12 @@ impl Grid {
     }
     pub fn add(&mut self, player: u64, pos: (u32, u32)) {
         self.moves.push(Move::new(player, pos));
+    }
+    fn get_index(&self, pos: (u32, u32)) -> Option<usize> {
+        self.moves
+            .iter()
+            .rev()
+            .position(|m| m.position == pos)
     }
 }
 
@@ -34,4 +40,18 @@ impl Move {
             position: pos,
         }
     }
+}
+
+#[test]
+fn test_grid() {
+    let mut grid = Grid::new((3, 3));
+
+    grid.add(1000, (1, 1));
+    grid.add(1001, (2, 0));
+    grid.add(1000, (0, 2));
+
+    assert_eq!(grid.get_pos((0, 0)), 0);
+    assert_eq!(grid.get_pos((1, 1)), 1000);
+    assert_eq!(grid.get_pos((2, 0)), 1001);
+    assert_eq!(grid.get_pos((0, 2)), 1000);
 }

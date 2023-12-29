@@ -146,14 +146,12 @@ fn handle_connection(
     println!("Closing connection {}", addr);
     let close = websocket.close(None);
     if close.is_err() {
-        println!("Connection closed by client");
+        println!("{}", close.err().unwrap().to_string());
     } else {
-        println!("Connection closed by server");
+        println!("Connection closed");
     }
 }
 
 fn get_addr(stream: &TcpStream) -> String {
     stream.peer_addr().unwrap().to_string()
 }
-
-fn handle_players() {}
