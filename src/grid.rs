@@ -1,16 +1,18 @@
+use crate::common::Size;
+
 pub(crate) struct Grid {
-    size: (u32, u32),
+    size: Size,
     moves: Vec<Move>,
 }
 
 impl Grid {
-    pub fn new(size: (u32, u32)) -> Self {
+    pub fn new(size: Size) -> Self {
         Self {
             size: size,
             moves: Vec::new(),
         }
     }
-    pub fn get_pos(&self, pos: (u32, u32)) -> u32 {
+    pub fn get_pos(&self, pos: Size) -> u32 {
         let index = self.get_index(pos);
 
         if index.is_some() {
@@ -18,10 +20,10 @@ impl Grid {
         }
         0
     }
-    pub fn add(&mut self, player: u32, pos: (u32, u32)) {
+    pub fn add(&mut self, player: u32, pos: Size) {
         self.moves.push(Move::new(player, pos));
     }
-    fn get_index(&self, pos: (u32, u32)) -> Option<usize> {
+    fn get_index(&self, pos: Size) -> Option<usize> {
         self.moves
             .iter()
             .rev()
@@ -31,10 +33,10 @@ impl Grid {
 
 struct Move {
     player: u32,
-    position: (u32, u32),
+    position: Size,
 }
 impl Move {
-    pub fn new(player: u32, pos: (u32, u32)) -> Self {
+    pub fn new(player: u32, pos: Size) -> Self {
         Self {
             player: player,
             position: pos,
@@ -44,14 +46,14 @@ impl Move {
 
 #[test]
 fn test_grid() {
-    let mut grid = Grid::new((3, 3));
+    let mut grid = Grid::new(Size::new(3, 3));
 
-    grid.add(1000, (1, 1));
-    grid.add(1001, (2, 0));
-    grid.add(1000, (0, 2));
+    grid.add(1000, Size::new(1, 1));
+    grid.add(1001, Size::new(2, 0));
+    grid.add(1000, Size::new(0, 2));
 
-    assert_eq!(grid.get_pos((0, 0)), 0);
-    assert_eq!(grid.get_pos((1, 1)), 1000);
-    assert_eq!(grid.get_pos((2, 0)), 1001);
-    assert_eq!(grid.get_pos((0, 2)), 1000);
+    assert_eq!(grid.get_pos(Size::new(0, 0)), 0);
+    assert_eq!(grid.get_pos(Size::new(1, 1)), 1000);
+    assert_eq!(grid.get_pos(Size::new(2, 0)), 1001);
+    assert_eq!(grid.get_pos(Size::new(0, 2)), 1000);
 }

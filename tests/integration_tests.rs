@@ -44,7 +44,16 @@ fn player_list() {
         let mut conn = result.unwrap();
 
         // Send request
-        conn.send(Message::text("{\"event\":\"players\",\"content\":\"\"}")).unwrap();
+        conn.send(
+            Message::text(
+                jzon::stringify(
+                    object! {
+                        event: "players",
+                        content: ""
+                    }
+                )
+            )
+        ).unwrap();
 
         // Check response
         let response = conn.read();
@@ -67,7 +76,7 @@ fn player_list() {
 
         let parsed_content = parsed_content_result.unwrap();
 
-        // Check response
+        // Check content
         clean_assert!(parsed_content.is_array(), child);
         clean_assert!(parsed_content.as_array().unwrap().len() == i + 1, child);
         clean_assert!(parsed_content.as_array().unwrap()[i].is_object(), child);
@@ -89,6 +98,119 @@ fn player_list() {
         conn.flush().unwrap();
         conn.read().unwrap();
         clean_assert!(!conn.can_read(), child);
+    }
+
+    common::stop_server(&mut child);
+}
+
+#[test]
+fn games_list() {
+    let ip = "127.0.0.4:9004";
+
+    let mut child = common::start_server(ip);
+
+    let game_num = 10;
+
+    let result = common::get_connection(ip);
+
+    // Check connection
+    clean_assert!(result.is_ok(), child);
+
+    let mut conn = result.unwrap();
+
+    for i in 0..game_num {
+        // Send request
+        conn.send(
+            Message::Text(
+                jzon::stringify(
+                    object! {
+                        event: "create_game",
+                        content: jzon::stringify(object! {
+                            size: {
+                                x: i + 3,
+                                y: i + 3
+                            }
+                        })
+                    }
+                )
+            )
+        ).unwrap();
+
+        // Check response
+        let response = conn.read();
+        clean_assert!(response.is_ok(), child);
+
+        // Parse response
+        let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
+        clean_assert!(parsed_result.is_ok(), child);
+
+        let parsed = parsed_result.unwrap();
+
+        // Check response
+        clean_assert!(parsed["event"].is_string(), child);
+        clean_assert!(parsed["content"].is_string(), child);
+        clean_assert!(parsed["event"] == "create_game", child);
+
+        // Parse content
+        let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
+        clean_assert!(parsed_content_result.is_ok(), child);
+
+        let parsed_content = parsed_content_result.unwrap();
+
+        clean_assert!(parsed_content["status"].is_string(), child);
+        clean_assert!(parsed_content["status"] == "ok", child);
+
+        // Send request
+        conn.send(
+            Message::text(
+                jzon::stringify(
+                    object! {
+                        event: "games",
+                        content: ""
+                    }
+                )
+            )
+        ).unwrap();
+
+        // Check response
+        let response = conn.read();
+        clean_assert!(response.is_ok(), child);
+
+        // Parse response
+        let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
+        clean_assert!(parsed_result.is_ok(), child);
+
+        let parsed = parsed_result.unwrap();
+
+        // Check response
+        clean_assert!(parsed["event"].is_string(), child);
+        clean_assert!(parsed["content"].is_string(), child);
+        clean_assert!(parsed["event"] == "games", child);
+
+        // Parse content
+        let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
+        clean_assert!(parsed_content_result.is_ok(), child);
+
+        let parsed_content = parsed_content_result.unwrap();
+
+        // Check content
+        clean_assert!(parsed_content.is_array(), child);
+        clean_assert!(parsed_content.as_array().unwrap().len() == i + 1, child);
+        clean_assert!(parsed_content.as_array().unwrap()[i].is_object(), child);
+        clean_assert!(
+            parsed_content
+                .as_array()
+                .unwrap()
+                .contains(
+                    &(object! {
+                        id: i,
+                        player_list: [
+
+                        ]
+                    })
+                ),
+            child
+        );
     }
 
     common::stop_server(&mut child);

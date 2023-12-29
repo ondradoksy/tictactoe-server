@@ -2,6 +2,7 @@ mod grid;
 mod game;
 mod player;
 mod net;
+mod common;
 
 use std::{ io, env };
 use std::net::{ TcpListener, TcpStream };
@@ -11,7 +12,7 @@ use std::time::Duration;
 use game::Game;
 use tungstenite::accept;
 use crate::player::Player;
-use crate::net::{ MessageEvent, GameParameters };
+use crate::net::{ MessageEvent, GameParameters, Status };
 
 /// A WebSocket echo server
 fn main() {
@@ -19,9 +20,13 @@ fn main() {
     let listen_ip = if args.len() > 1 { args[1].as_str() } else { "0.0.0.0:9001" };
 
     let server = TcpListener::bind(listen_ip).unwrap();
+    println!("Listening on {}", listen_ip);
+
     let mut player_id_counter: u32 = 0;
     let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::<Player>::new()));
-    let games: Arc<Mutex<Vec<Game>>> = Arc::new(Mutex::new(Vec::<Game>::new()));
+    let games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>> = Arc::new(
+        Mutex::new(Vec::<Arc<Mutex<Game>>>::new())
+    );
     let game_id_counter: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
 
     for stream in server.incoming() {
@@ -47,7 +52,7 @@ fn handle_connection(
     stream: TcpStream,
     unique_id: u32,
     players: Arc<Mutex<Vec<Player>>>,
-    games: Arc<Mutex<Vec<Game>>>,
+    games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>>,
     game_id_counter: Arc<Mutex<u32>>
 ) {
     let addr = get_addr(&stream);
@@ -115,6 +120,12 @@ fn handle_connection(
                     if game_parameters.is_ok() {
                         let game = Game::new(game_parameters.unwrap().size, &game_id_counter);
                         games.lock().unwrap().push(game);
+                        response = MessageEvent::new("create_game", Status::new("ok", ""));
+                    } else {
+                        response = MessageEvent::new(
+                            "create_game",
+                            Status::new("error", game_parameters.err().unwrap().to_string())
+                        );
                     }
                 }
                 // Get game list
