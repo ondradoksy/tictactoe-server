@@ -65,6 +65,13 @@ fn handle_connection(
     // Prevent read from blocking forever
     stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
 
+    let websocket_result = accept(stream);
+    if websocket_result.is_err() {
+        println!("{} - {}", addr, websocket_result.err().unwrap());
+        return;
+    }
+    let mut websocket = websocket_result.unwrap();
+
     // Create channel
     let (tx, rx) = mpsc::channel();
 
@@ -72,8 +79,6 @@ fn handle_connection(
 
     // Add new player to list
     players.lock().unwrap().push(player_arc.clone());
-
-    let mut websocket = accept(stream).unwrap();
 
     loop {
         // Process queue
