@@ -128,7 +128,7 @@ fn handle_connection(
                     let game_parameters = GameCreationData::from_json(json.as_str());
                     if game_parameters.is_ok() {
                         let game = Game::new(
-                            game_parameters.unwrap().size,
+                            &game_parameters.unwrap(),
                             &game_id_counter,
                             &player_arc
                         );

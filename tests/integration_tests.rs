@@ -132,7 +132,9 @@ fn games_list() {
                             size: {
                                 x: i + 3,
                                 y: i + 3
-                            }
+                            },
+                            hotjoin: true,
+                            player_limit: 10,
                         })
                     }
                 )
@@ -212,7 +214,10 @@ fn games_list() {
                             id: 0,
                             joined_game: Null
                         },
-                        current_turn: 0
+                        current_turn: 0,
+                        hotjoin: true,
+                        player_limit: 10,
+                        running: false,
                     })
                 ),
             child

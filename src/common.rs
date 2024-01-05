@@ -2,13 +2,14 @@ use std::sync::{ Arc, Mutex };
 
 use serde::{ Serialize, Deserialize };
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub(crate) struct Size {
     pub x: u32,
     pub y: u32,
 }
 
 impl Size {
+    #[cfg(test)]
     pub fn new(x: u32, y: u32) -> Self {
         Self {
             x: x,

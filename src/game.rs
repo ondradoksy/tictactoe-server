@@ -3,7 +3,7 @@ use std::{ sync::{ Mutex, Arc, mpsc::{ self, Sender, Receiver } }, thread::spawn
 use serde::Serialize;
 use crate::{
     grid::Grid,
-    net::{ InternalMessage, InternalMessageKind, MessageEvent },
+    net::{ InternalMessage, InternalMessageKind, MessageEvent, GameCreationData },
     player::Player,
     common::{ Size, find_index },
     player_move::PlayerMove,
@@ -19,10 +19,13 @@ pub(crate) struct Game {
     player_list: Vec<Arc<Mutex<Player>>>,
     creator: Arc<Mutex<Player>>,
     current_turn: usize,
+    hotjoin: bool,
+    player_limit: usize,
+    running: bool,
 }
 impl Game {
     pub fn new(
-        size: Size,
+        parameters: &GameCreationData,
         game_id_counter: &Arc<Mutex<u32>>,
         creator: &Arc<Mutex<Player>>
     ) -> Arc<Mutex<Self>> {
@@ -30,11 +33,14 @@ impl Game {
         let mut id_counter_locked = game_id_counter.lock().unwrap();
         let instance = Self {
             id: *id_counter_locked,
-            grid: Grid::new(size),
+            grid: Grid::new(parameters.size),
             tx: tx,
             player_list: Vec::new(),
             creator: creator.clone(),
             current_turn: 0,
+            hotjoin: parameters.hotjoin,
+            player_limit: parameters.player_limit,
+            running: false,
         };
         *id_counter_locked += 1;
         let arc = Arc::new(Mutex::new(instance));
@@ -113,6 +119,10 @@ impl Game {
     }
 
     pub fn join_player(&self, player: &Arc<Mutex<Player>>) -> bool {
+        if (self.running && !self.hotjoin) || self.player_list.len() == self.player_limit {
+            return false;
+        }
+
         self.tx.send(InternalMessage::new_join(player.clone())).unwrap();
         true
     }
@@ -135,7 +145,8 @@ fn player_join() {
     let (tx, _rx) = mpsc::channel();
     let player = Arc::new(Mutex::new(Player::new(0, tx)));
     let game_id_counter = Arc::new(Mutex::new(0));
-    let game = Game::new(Size::new(5, 5), &game_id_counter, &player.clone());
+    let game_parameters = GameCreationData::new(Size::new(5, 5), true, 10);
+    let game = Game::new(&game_parameters, &game_id_counter, &player.clone());
 
     let mut players: Vec<Arc<Mutex<Player>>> = Vec::new();
     for i in 1..10 {
