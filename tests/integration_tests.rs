@@ -39,11 +39,13 @@ fn player_list() {
         let result = common::get_connection(ip);
 
         // Check connection
+        println!("Checking connection");
         clean_assert!(result.is_ok(), child);
 
         let mut conn = result.unwrap();
 
         // Send request
+        println!("Sending request");
         conn.send(
             Message::text(
                 jzon::stringify(
@@ -56,27 +58,32 @@ fn player_list() {
         ).unwrap();
 
         // Check response
+        println!("Checking response");
         let response = conn.read();
         clean_assert!(response.is_ok(), child);
 
         // Parse response
+        println!("Parsing response");
         let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
         clean_assert!(parsed_result.is_ok(), child);
 
         let parsed = parsed_result.unwrap();
 
         // Check response
+        println!("Checking response");
         clean_assert!(parsed["event"].is_string(), child);
         clean_assert!(parsed["content"].is_string(), child);
         clean_assert!(parsed["event"] == "players", child);
 
         // Parse content
+        println!("Parsing content");
         let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
         clean_assert!(parsed_content_result.is_ok(), child);
 
         let parsed_content = parsed_content_result.unwrap();
 
         // Check content
+        println!("Checking content");
         clean_assert!(parsed_content.is_array(), child);
         clean_assert!(parsed_content.as_array().unwrap().len() == i + 1, child);
         clean_assert!(parsed_content.as_array().unwrap()[i].is_object(), child);
@@ -97,6 +104,7 @@ fn player_list() {
         conns.push(conn);
     }
 
+    println!("Flushing connections");
     for mut conn in conns {
         conn.close(None).unwrap();
         conn.flush().unwrap();
@@ -104,7 +112,9 @@ fn player_list() {
         clean_assert!(!conn.can_read(), child);
     }
 
+    println!("Stopping server");
     common::stop_server(&mut child);
+    println!("Server stopped");
 }
 
 #[test]

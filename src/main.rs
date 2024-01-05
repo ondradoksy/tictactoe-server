@@ -225,10 +225,24 @@ fn handle_connection(
 
             // Respond to current request first (might be best to remove in the future)
             if !response.is_empty() {
-                websocket.send(response.to_message()).unwrap();
+                let send_result = websocket.send(response.to_message());
+                if send_result.is_err() {
+                    println!("{} - {}", addr, send_result.err().unwrap());
+                    break;
+                }
             }
         } else {
             println!("{} - {}", addr, result.err().unwrap());
+            let send_result = websocket.send(
+                MessageEvent::new(
+                    "unknown",
+                    Status::new("error", "Malfomed message JSON.")
+                ).to_message()
+            );
+            if send_result.is_err() {
+                println!("{} - {}", addr, send_result.err().unwrap());
+                break;
+            }
         }
     }
 
@@ -236,6 +250,7 @@ fn handle_connection(
     if player_guard.joined_game.is_some() {
         player_guard.joined_game.as_ref().unwrap().lock().unwrap().leave_player(&player_arc);
     }
+    drop(player_guard);
 
     // Remove player from list
     println!("Removing player {}", unique_id);
