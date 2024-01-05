@@ -69,8 +69,33 @@ impl Game {
                 InternalMessageKind::PlayerLeave => {
                     game.lock().unwrap().remove_player(&mut msg.player.lock().unwrap());
                 }
+                InternalMessageKind::PlayerReady => {
+                    let mut game_guard = game.lock().unwrap();
+                    if game_guard.can_start() {
+                        game_guard.start();
+                    }
+                }
             }
             println!("message");
+        }
+    }
+    fn can_start(&self) -> bool {
+        for player in &self.player_list {
+            if !player.lock().unwrap().ready {
+                return false;
+            }
+        }
+        true
+    }
+    fn start(&mut self) {
+        self.running = true;
+        self.broadcast_turn();
+    }
+    pub fn ready_toggle(&self, player: &Arc<Mutex<Player>>) {
+        let mut player_guard = player.lock().unwrap();
+        player_guard.ready = !player_guard.ready;
+        if player_guard.ready {
+            self.tx.send(InternalMessage::new_ready(player.clone())).unwrap();
         }
     }
 
@@ -128,10 +153,13 @@ impl Game {
     }
 
     pub fn add_move(&self, player: &Arc<Mutex<Player>>, pos: Size) -> bool {
-        if !self.grid.is_valid_move(&pos) {
+        if
+            !self.grid.is_valid_move(&pos) ||
+            *player.lock().unwrap() != *self.player_list[self.current_turn].lock().unwrap()
+        {
             return false;
         }
-        // TODO: Check if it's the player's turn.
+
         self.tx.send(InternalMessage::new_move(player.clone(), pos)).unwrap();
         true
     }

@@ -10,6 +10,7 @@ pub(crate) struct Player {
     #[serde(skip_serializing)]
     pub tx: Sender<MessageEvent>,
     pub joined_game: Option<Arc<Mutex<Game>>>,
+    pub ready: bool,
 }
 impl Player {
     pub fn new(id: u32, tx: Sender<MessageEvent>) -> Self {
@@ -17,6 +18,7 @@ impl Player {
             id: id,
             tx: tx,
             joined_game: None,
+            ready: false,
         }
     }
 }

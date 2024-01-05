@@ -202,6 +202,19 @@ fn handle_connection(
                         );
                     }
                 }
+                "ready" => {
+                    let game = &player_arc.lock().unwrap().joined_game;
+
+                    // Check player is in a game
+                    if game.is_some() {
+                        game.as_ref().unwrap().lock().unwrap().ready_toggle(&player_arc);
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", "You are not in a game.")
+                        );
+                    }
+                }
                 _ => {
                     response = MessageEvent::new(
                         event.event,

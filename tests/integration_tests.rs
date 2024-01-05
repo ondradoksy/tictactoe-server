@@ -87,7 +87,8 @@ fn player_list() {
                 .contains(
                     &(object! {
                     id: i,
-                    joined_game: Null
+                    joined_game: Null,
+                    ready: false
         })
                 ),
             child
@@ -212,7 +213,8 @@ fn games_list() {
                         player_list: [],
                         creator: {
                             id: 0,
-                            joined_game: Null
+                            joined_game: Null,
+                            ready: false
                         },
                         current_turn: 0,
                         hotjoin: true,

@@ -95,12 +95,20 @@ impl InternalMessage {
             position: None,
         }
     }
+    pub fn new_ready(player: Arc<Mutex<Player>>) -> Self {
+        Self {
+            kind: InternalMessageKind::PlayerReady,
+            player: player,
+            position: None,
+        }
+    }
 }
 
 pub(crate) enum InternalMessageKind {
     PlayerJoin,
     PlayerMove,
     PlayerLeave,
+    PlayerReady,
 }
 
 #[derive(Serialize)]
