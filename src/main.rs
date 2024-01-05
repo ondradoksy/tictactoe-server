@@ -3,6 +3,7 @@ mod game;
 mod player;
 mod net;
 mod common;
+mod player_move;
 
 use std::{ io, env };
 use std::net::{ TcpListener, TcpStream };
@@ -129,7 +130,7 @@ fn handle_connection(
                         let game = Game::new(
                             game_parameters.unwrap().size,
                             &game_id_counter,
-                            player_arc.clone()
+                            &player_arc
                         );
                         games.lock().unwrap().push(game);
                         response = MessageEvent::new("create_game", Status::new("ok", ""));
@@ -216,6 +217,11 @@ fn handle_connection(
         } else {
             println!("{} - {}", addr, result.err().unwrap());
         }
+    }
+
+    let player_guard = player_arc.lock().unwrap();
+    if player_guard.joined_game.is_some() {
+        player_guard.joined_game.as_ref().unwrap().lock().unwrap().leave_player(&player_arc);
     }
 
     // Remove player from list

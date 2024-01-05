@@ -211,7 +211,8 @@ fn games_list() {
                         creator: {
                             id: 0,
                             joined_game: Null
-                        }
+                        },
+                        current_turn: 0
                     })
                 ),
             child

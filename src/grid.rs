@@ -1,8 +1,8 @@
-use crate::common::Size;
+use crate::{ common::Size, player_move::PlayerMove };
 
 pub(crate) struct Grid {
     size: Size,
-    moves: Vec<Move>,
+    moves: Vec<PlayerMove>,
 }
 
 impl Grid {
@@ -20,8 +20,8 @@ impl Grid {
         }
         None
     }
-    pub fn add(&mut self, player: u32, pos: Size) {
-        self.moves.push(Move::new(player, pos));
+    pub fn add(&mut self, m: PlayerMove) {
+        self.moves.push(m);
     }
     fn get_index(&self, pos: &Size) -> Option<usize> {
         self.moves
@@ -37,26 +37,13 @@ impl Grid {
     }
 }
 
-struct Move {
-    player: u32,
-    position: Size,
-}
-impl Move {
-    pub fn new(player: u32, pos: Size) -> Self {
-        Self {
-            player: player,
-            position: pos,
-        }
-    }
-}
-
 #[test]
 fn test_grid() {
     let mut grid = Grid::new(Size::new(3, 3));
 
-    grid.add(1000, Size::new(1, 1));
-    grid.add(1001, Size::new(2, 0));
-    grid.add(1000, Size::new(0, 2));
+    grid.add(PlayerMove::new(1000, Size::new(1, 1)));
+    grid.add(PlayerMove::new(1001, Size::new(2, 0)));
+    grid.add(PlayerMove::new(1000, Size::new(0, 2)));
 
     assert_eq!(grid.get_pos(&Size::new(0, 0)), None);
     assert_eq!(grid.get_pos(&Size::new(1, 1)), Some(1000));

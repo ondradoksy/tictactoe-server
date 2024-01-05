@@ -5,7 +5,7 @@ use tungstenite::Message;
 
 use crate::{ common::{ Size, from_json }, player::Player };
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub(crate) struct MessageEvent {
     pub event: String,
     pub content: String,
@@ -78,11 +78,19 @@ impl InternalMessage {
             position: Some(pos),
         }
     }
+    pub fn new_leave(player: Arc<Mutex<Player>>) -> Self {
+        Self {
+            kind: InternalMessageKind::PlayerLeave,
+            player: player,
+            position: None,
+        }
+    }
 }
 
 pub(crate) enum InternalMessageKind {
     PlayerJoin,
     PlayerMove,
+    PlayerLeave,
 }
 
 #[derive(Serialize)]
