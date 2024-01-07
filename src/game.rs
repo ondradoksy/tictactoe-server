@@ -59,6 +59,11 @@ impl Game {
         for msg in rx.iter() {
             match msg.kind {
                 InternalMessageKind::PlayerJoin => {
+                    let mut player_guard = msg.player.lock().unwrap();
+                    player_guard.joined_game = Some(game.clone());
+                    player_guard.joined_game_id = Some(game.lock().unwrap().id);
+                    drop(player_guard);
+
                     game.lock().unwrap().player_list.push(msg.player);
                 }
                 InternalMessageKind::PlayerMove => {
@@ -135,6 +140,7 @@ impl Game {
         self.player_list.remove(index);
         self.broadcast_turn();
         player.joined_game = None;
+        player.joined_game_id = None;
     }
 
     fn next_turn(&mut self) {
