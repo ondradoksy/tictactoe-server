@@ -22,6 +22,7 @@ pub(crate) struct Game {
     hotjoin: bool,
     player_limit: usize,
     running: bool,
+    length_to_win: u32,
 }
 impl Game {
     pub fn new(
@@ -41,6 +42,7 @@ impl Game {
             hotjoin: parameters.hotjoin,
             player_limit: parameters.player_limit,
             running: false,
+            length_to_win: parameters.length_to_win,
         };
         *id_counter_locked += 1;
         let arc = Arc::new(Mutex::new(instance));
@@ -173,7 +175,7 @@ fn player_join() {
     let (tx, _rx) = mpsc::channel();
     let player = Arc::new(Mutex::new(Player::new(0, tx)));
     let game_id_counter = Arc::new(Mutex::new(0));
-    let game_parameters = GameCreationData::new(Size::new(5, 5), true, 10);
+    let game_parameters = GameCreationData::new(Size::new(5, 5), true, 10, 4);
     let game = Game::new(&game_parameters, &game_id_counter, &player.clone());
 
     let mut players: Vec<Arc<Mutex<Player>>> = Vec::new();

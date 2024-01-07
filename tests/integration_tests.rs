@@ -146,6 +146,7 @@ fn games_list() {
                             },
                             hotjoin: true,
                             player_limit: 10,
+                            length_to_win: 3
                         })
                     }
                 )
@@ -230,6 +231,7 @@ fn games_list() {
                         hotjoin: true,
                         player_limit: 10,
                         running: false,
+                        length_to_win: 3
                     })
                 ),
             child

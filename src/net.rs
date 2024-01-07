@@ -42,14 +42,16 @@ pub(crate) struct GameCreationData {
     pub size: Size,
     pub hotjoin: bool,
     pub player_limit: usize,
+    pub length_to_win: u32,
 }
 impl GameCreationData {
     #[cfg(test)]
-    pub fn new(size: Size, hotjoin: bool, player_limit: usize) -> Self {
+    pub fn new(size: Size, hotjoin: bool, player_limit: usize, length_to_win: u32) -> Self {
         Self {
             size: size,
             hotjoin: hotjoin,
             player_limit: player_limit,
+            length_to_win: length_to_win,
         }
     }
     pub fn from_json(text: &str) -> Result<Self, String> {
