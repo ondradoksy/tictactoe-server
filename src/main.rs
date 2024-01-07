@@ -12,9 +12,9 @@ use std::thread::spawn;
 use std::time::Duration;
 use game::Game;
 use tungstenite::accept;
-use crate::common::{ Size, get_object };
+use crate::common::Size;
 use crate::player::Player;
-use crate::net::{ MessageEvent, GameCreationData, Status, GameJoinData };
+use crate::net::{ MessageEvent, GameCreationData, Status, broadcast_games, broadcast_players };
 
 /// A WebSocket echo server
 fn main() {
@@ -114,8 +114,7 @@ fn handle_connection(
             match event.event.as_str() {
                 // Get player list
                 "players" => {
-                    let json = serde_json::to_string(&*players.lock().unwrap()).unwrap();
-                    response = MessageEvent::new(&String::from("players"), &json);
+                    broadcast_players(&players);
                 }
                 // Broadcast message to all players
                 "broadcast" => {
@@ -135,10 +134,12 @@ fn handle_connection(
                         let game = Game::new(
                             &game_parameters.unwrap(),
                             &game_id_counter,
-                            &player_arc
+                            &player_arc,
+                            &players
                         );
                         games.lock().unwrap().push(game);
                         response = MessageEvent::new("create_game", Status::new("ok", ""));
+                        broadcast_games(&players, &games);
                     } else {
                         response = MessageEvent::new(
                             event.event,
@@ -148,31 +149,11 @@ fn handle_connection(
                 }
                 // Get game list
                 "games" => {
-                    let json = serde_json::to_string(&*games.lock().unwrap()).unwrap();
-                    response = MessageEvent::new(&String::from("games"), &json);
+                    broadcast_games(&players, &games);
                 }
                 // Join game
                 "join_game" => {
-                    let join_data = GameJoinData::from_json(&event.content);
-                    if join_data.is_ok() {
-                        let id = join_data.unwrap().id;
-                        let game = get_object(&games, |p| p.lock().unwrap().id == id);
-
-                        // Check if game exists
-                        if game.is_some() {
-                            game.unwrap().lock().unwrap().join_player(&player_arc);
-                        } else {
-                            response = MessageEvent::new(
-                                event.event,
-                                Status::new("error", "Game does not exist.")
-                            );
-                        }
-                    } else {
-                        response = MessageEvent::new(
-                            event.event,
-                            Status::new("error", join_data.err().unwrap().to_string())
-                        );
-                    }
+                    response = Player::join_game(&player_arc, &event, &games, &players);
                 }
                 // Make move
                 "move" => {
@@ -213,6 +194,7 @@ fn handle_connection(
                     // Check player is in a game
                     if game.is_some() {
                         game.as_ref().unwrap().lock().unwrap().ready_toggle(&player_arc);
+                        broadcast_players(&players);
                     } else {
                         response = MessageEvent::new(
                             event.event,
@@ -251,9 +233,10 @@ fn handle_connection(
         }
     }
 
-    let player_guard = player_arc.lock().unwrap();
+    let mut player_guard = player_arc.lock().unwrap();
     if player_guard.joined_game.is_some() {
-        player_guard.joined_game.as_ref().unwrap().lock().unwrap().leave_player(&player_arc);
+        let game_guard = player_guard.joined_game.as_mut().unwrap().lock().unwrap();
+        game_guard.leave_player(&player_arc);
     }
     drop(player_guard);
 

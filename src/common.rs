@@ -36,7 +36,9 @@ pub fn get_object<T, P>(arr: &Arc<Mutex<Vec<Arc<Mutex<T>>>>>, predicate: P) -> O
     let guard = arr.lock().unwrap();
     let index = find_index(&guard, predicate);
     if index.is_some() {
-        return Some(guard[index.unwrap()].clone());
+        let result = Some(guard[index.unwrap()].clone());
+        drop(guard);
+        return result;
     }
     None
 }

@@ -154,90 +154,71 @@ fn games_list() {
             )
         ).unwrap();
 
-        // Check response
-        let response = conn.read();
-        clean_assert!(response.is_ok(), child);
+        for _ in 0..2 {
+            // Check response
+            let response = conn.read();
+            clean_assert!(response.is_ok(), child);
 
-        // Parse response
-        let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
-        clean_assert!(parsed_result.is_ok(), child);
+            // Parse response
+            let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
+            clean_assert!(parsed_result.is_ok(), child);
 
-        let parsed = parsed_result.unwrap();
+            let parsed = parsed_result.unwrap();
 
-        // Check response
-        clean_assert!(parsed["event"].is_string(), child);
-        clean_assert!(parsed["content"].is_string(), child);
-        clean_assert!(parsed["event"] == "create_game", child);
+            // Check response
+            clean_assert!(parsed["event"].is_string(), child);
+            clean_assert!(parsed["content"].is_string(), child);
+            match parsed["event"].as_str().unwrap() {
+                "create_game" => {
+                    // Parse content
+                    let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
+                    clean_assert!(parsed_content_result.is_ok(), child);
 
-        // Parse content
-        let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
-        clean_assert!(parsed_content_result.is_ok(), child);
+                    let parsed_content = parsed_content_result.unwrap();
 
-        let parsed_content = parsed_content_result.unwrap();
+                    clean_assert!(parsed_content["status"].is_string(), child);
+                    clean_assert!(parsed_content["status"] == "ok", child);
+                }
+                "games" => {
+                    // Parse content
+                    let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
+                    clean_assert!(parsed_content_result.is_ok(), child);
 
-        clean_assert!(parsed_content["status"].is_string(), child);
-        clean_assert!(parsed_content["status"] == "ok", child);
+                    let parsed_content = parsed_content_result.unwrap();
 
-        // Send request
-        conn.send(
-            Message::text(
-                jzon::stringify(
-                    object! {
-                        event: "games",
-                        content: ""
-                    }
-                )
-            )
-        ).unwrap();
-
-        // Check response
-        let response = conn.read();
-        clean_assert!(response.is_ok(), child);
-
-        // Parse response
-        let parsed_result = jzon::parse(response.unwrap().to_text().unwrap());
-        clean_assert!(parsed_result.is_ok(), child);
-
-        let parsed = parsed_result.unwrap();
-
-        // Check response
-        clean_assert!(parsed["event"].is_string(), child);
-        clean_assert!(parsed["content"].is_string(), child);
-        clean_assert!(parsed["event"] == "games", child);
-
-        // Parse content
-        let parsed_content_result = jzon::parse(parsed["content"].as_str().unwrap());
-        clean_assert!(parsed_content_result.is_ok(), child);
-
-        let parsed_content = parsed_content_result.unwrap();
-
-        // Check content
-        clean_assert!(parsed_content.is_array(), child);
-        clean_assert!(parsed_content.as_array().unwrap().len() == i + 1, child);
-        clean_assert!(parsed_content.as_array().unwrap()[i].is_object(), child);
-        clean_assert!(
-            parsed_content
-                .as_array()
-                .unwrap()
-                .contains(
-                    &(object! {
+                    // Check content
+                    clean_assert!(parsed_content.is_array(), child);
+                    println!("{} {}", parsed_content.as_array().unwrap().len(), i + 1);
+                    println!("{}", parsed["content"]);
+                    clean_assert!(parsed_content.as_array().unwrap().len() == i + 1, child);
+                    clean_assert!(parsed_content.as_array().unwrap()[i].is_object(), child);
+                    clean_assert!(
+                        parsed_content
+                            .as_array()
+                            .unwrap()
+                            .contains(
+                                &(object! {
                         id: i,
                         player_list: [],
-                        creator: {
-                            id: 0,
-                            joined_game_id: Null,
-                            ready: false,
-                            name: "Unnamed"
-                        },
+                        creator: 0,
                         current_turn: 0,
                         hotjoin: true,
                         player_limit: 10,
                         running: false,
                         length_to_win: 3
                     })
-                ),
-            child
-        );
+                            ),
+                        child
+                    );
+                }
+                "players" => {
+                    // Ignore
+                }
+                _ => {
+                    clean_assert!(false, child);
+                }
+            }
+        }
     }
 
     common::stop_server(&mut child);

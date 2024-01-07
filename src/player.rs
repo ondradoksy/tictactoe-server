@@ -2,7 +2,11 @@ use std::sync::{ mpsc::Sender, Arc, Mutex };
 
 use serde::Serialize;
 
-use crate::{ net::MessageEvent, game::Game };
+use crate::{
+    net::{ MessageEvent, GameJoinData, Status, broadcast_players },
+    game::Game,
+    common::get_object,
+};
 
 #[derive(Serialize)]
 pub(crate) struct Player {
@@ -25,6 +29,38 @@ impl Player {
             ready: false,
             name: "Unnamed".to_string(),
         }
+    }
+    pub fn join_game(
+        player: &Arc<Mutex<Player>>,
+        event: &MessageEvent,
+        games: &Arc<Mutex<Vec<Arc<Mutex<Game>>>>>,
+        players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>
+    ) -> MessageEvent {
+        let join_data = GameJoinData::from_json(&event.content);
+        if join_data.is_err() {
+            return MessageEvent::new(
+                event.event.clone(),
+                Status::new("error", join_data.err().unwrap().to_string())
+            );
+        }
+
+        let id = join_data.unwrap().id;
+        let game = get_object(&games, |p| p.lock().unwrap().id == id);
+
+        // Check if game exists
+        if game.is_none() {
+            return MessageEvent::new(
+                event.event.clone(),
+                Status::new("error", "Game does not exist.")
+            );
+        }
+
+        if !game.unwrap().lock().unwrap().join_player(&player) {
+            return MessageEvent::new(event.event.clone(), Status::new("error", "Can't join game."));
+        }
+
+        broadcast_players(&players);
+        MessageEvent::new(event.event.clone(), Status::new("ok", ""))
     }
 }
 impl PartialEq for Player {

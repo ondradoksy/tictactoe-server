@@ -3,7 +3,7 @@ use std::sync::{ Arc, Mutex };
 use serde::{ Serialize, Deserialize };
 use tungstenite::Message;
 
-use crate::{ common::{ Size, from_json }, player::Player };
+use crate::{ common::{ Size, from_json }, player::Player, game::Game };
 
 #[derive(Deserialize, Serialize, Clone)]
 pub(crate) struct MessageEvent {
@@ -132,4 +132,34 @@ impl From<Status> for String {
     fn from(value: Status) -> Self {
         serde_json::to_string(&value).unwrap()
     }
+}
+
+pub(crate) fn broadcast_players(players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
+    let players_guard = players.lock().unwrap();
+    let json = serde_json::to_string(&*players_guard).unwrap();
+    drop(players_guard);
+
+    let response = MessageEvent::new(&String::from("players"), &json);
+
+    broadcast(players, &response)
+}
+pub(crate) fn broadcast_games(
+    players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
+    games: &Arc<Mutex<Vec<Arc<Mutex<Game>>>>>
+) {
+    let games_guard = games.lock().unwrap();
+    let json = serde_json::to_string(&*games_guard).unwrap();
+    drop(games_guard);
+
+    let response = MessageEvent::new(&String::from("games"), &json);
+
+    broadcast(players, &response)
+}
+pub(crate) fn broadcast(players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>, message: &MessageEvent) {
+    for player in players.lock().unwrap().iter() {
+        send_to_player(player, message);
+    }
+}
+pub(crate) fn send_to_player(player: &Arc<Mutex<Player>>, message: &MessageEvent) {
+    player.lock().unwrap().tx.send(message.clone()).expect("Unable to send message");
 }
