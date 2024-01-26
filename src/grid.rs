@@ -1,5 +1,8 @@
+use serde::Serialize;
+
 use crate::{ common::Size, player_move::PlayerMove };
 
+#[derive(Serialize, Clone)]
 pub(crate) struct Grid {
     size: Size,
     moves: Vec<PlayerMove>,
@@ -34,6 +37,12 @@ impl Grid {
     }
     pub fn is_valid_move(&self, pos: &Size) -> bool {
         self.is_empty(pos) && pos.x < self.size.x && pos.y < self.size.y
+    }
+}
+
+impl From<Grid> for String {
+    fn from(value: Grid) -> Self {
+        serde_json::to_string(&value).expect("Unable to serialize")
     }
 }
 

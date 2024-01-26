@@ -59,16 +59,25 @@ impl GameCreationData {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub(crate) struct GameJoinData {
     pub id: u32,
 }
 impl GameJoinData {
+    pub fn new(id: u32) -> Self {
+        Self {
+            id: id,
+        }
+    }
     pub fn from_json(text: &str) -> Result<Self, String> {
         from_json(text)
     }
 }
-
+impl From<GameJoinData> for String {
+    fn from(value: GameJoinData) -> Self {
+        String::from(serde_json::to_string(&value).unwrap())
+    }
+}
 pub(crate) struct InternalMessage {
     pub kind: InternalMessageKind,
     pub player: Arc<Mutex<Player>>,

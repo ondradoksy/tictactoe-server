@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::common::Size;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub(crate) struct PlayerMove {
     pub player: u32,
     pub position: Size,

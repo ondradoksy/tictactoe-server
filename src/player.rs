@@ -3,7 +3,7 @@ use std::sync::{ mpsc::Sender, Arc, Mutex };
 use serde::Serialize;
 
 use crate::{
-    net::{ MessageEvent, GameJoinData, Status, broadcast_players },
+    net::{ MessageEvent, GameJoinData, Status, broadcast_players, send_to_player },
     game::Game,
     common::get_object,
 };
@@ -60,6 +60,7 @@ impl Player {
         }
 
         broadcast_players(&players);
+        send_to_player(&player, &MessageEvent::new("joined_game", GameJoinData::new(id)));
         MessageEvent::new(event.event.clone(), Status::new("ok", ""))
     }
 }

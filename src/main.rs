@@ -162,11 +162,12 @@ fn handle_connection(
 
                     // Check if json is valid
                     if position.is_ok() {
-                        let game = &player_arc.lock().unwrap().joined_game;
-
                         // Check player is in a game
-                        if game.is_some() {
-                            let game_locked = game.as_ref().unwrap().lock().unwrap();
+                        if player_arc.lock().unwrap().joined_game.is_some() {
+                            // Clone the Option<Arc<Mutex<Game>>> to prevent the player being locked resulting in the thread waiting forever
+                            let game = player_arc.lock().unwrap().joined_game.clone().unwrap();
+
+                            let game_locked = game.lock().unwrap();
                             if game_locked.add_move(&player_arc, position.unwrap()) {
                                 response = MessageEvent::new(event.event, Status::new("ok", ""));
                             } else {
@@ -189,11 +190,14 @@ fn handle_connection(
                     }
                 }
                 "ready" => {
-                    let game = &player_arc.lock().unwrap().joined_game;
-
                     // Check player is in a game
-                    if game.is_some() {
-                        game.as_ref().unwrap().lock().unwrap().ready_toggle(&player_arc);
+                    if player_arc.lock().unwrap().joined_game.is_some() {
+                        // Clone the Option<Arc<Mutex<Game>>> to prevent the player being locked resulting in the thread waiting forever
+                        let game = player_arc.lock().unwrap().joined_game.clone().unwrap();
+                        response = MessageEvent::new(
+                            event.event,
+                            game.lock().unwrap().ready_toggle(&player_arc)
+                        );
                         broadcast_players(&players);
                     } else {
                         response = MessageEvent::new(

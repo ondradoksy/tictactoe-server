@@ -3,7 +3,7 @@ use std::{ sync::{ Mutex, Arc, mpsc::{ self, Sender, Receiver } }, thread::spawn
 use serde::Serialize;
 use crate::{
     grid::Grid,
-    net::{ InternalMessage, InternalMessageKind, MessageEvent, GameCreationData },
+    net::{ InternalMessage, InternalMessageKind, MessageEvent, GameCreationData, Status },
     player::Player,
     common::{ Size, get_object },
     player_move::PlayerMove,
@@ -103,14 +103,20 @@ impl Game {
     }
     fn start(&mut self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
         self.running = true;
+        // Make sure to send current_state first to avoid breaking client
+        self.broadcast(&MessageEvent::new("current_state", self.grid.clone()), players);
         self.broadcast_turn(players);
     }
-    pub fn ready_toggle(&self, player: &Arc<Mutex<Player>>) {
+    pub fn ready_toggle(&self, player: &Arc<Mutex<Player>>) -> Status {
+        if self.running {
+            return Status::new("error", "Game is already running.");
+        }
         let mut player_guard = player.lock().unwrap();
         player_guard.ready = !player_guard.ready;
         if player_guard.ready {
             self.tx.send(InternalMessage::new_ready(player.clone())).unwrap();
         }
+        Status::new("ok", "")
     }
 
     fn send_to_player(
@@ -139,7 +145,7 @@ impl Game {
     }
 
     fn broadcast_move(&self, m: &PlayerMove, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
-        self.broadcast(&MessageEvent::new("move", serde_json::to_string(m).unwrap()), players);
+        self.broadcast(&MessageEvent::new("new_move", serde_json::to_string(m).unwrap()), players);
     }
 
     fn remove_player(
