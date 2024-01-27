@@ -3,7 +3,7 @@ use std::{ sync::{ Mutex, Arc, mpsc::{ self, Sender, Receiver } }, thread::spawn
 use serde::Serialize;
 use crate::{
     grid::Grid,
-    net::{ InternalMessage, InternalMessageKind, MessageEvent, GameCreationData, Status },
+    net::{ GameCreationData, InternalMessage, InternalMessageKind, MessageEvent, Status },
     player::Player,
     common::{ Size, get_object },
     player_move::PlayerMove,
@@ -65,12 +65,7 @@ impl Game {
         for msg in rx.iter() {
             match msg.kind {
                 InternalMessageKind::PlayerJoin => {
-                    let mut player_guard = msg.player.lock().unwrap();
-                    player_guard.joined_game = Some(game.clone());
-                    player_guard.joined_game_id = Some(game.lock().unwrap().id);
-                    drop(player_guard);
-
-                    game.lock().unwrap().player_list.push(msg.player.lock().unwrap().id);
+                    game.lock().unwrap().handle_player_join(&game, &msg.player);
                 }
                 InternalMessageKind::PlayerMove => {
                     let mut game_guard = game.lock().unwrap();
@@ -107,6 +102,19 @@ impl Game {
         self.broadcast(&MessageEvent::new("current_state", self.grid.clone()), players);
         self.broadcast_turn(players);
     }
+    fn handle_player_join(&mut self, self_arc: &Arc<Mutex<Self>>, player: &Arc<Mutex<Player>>) {
+        let mut player_guard = player.lock().unwrap();
+        player_guard.joined_game = Some(self_arc.clone());
+        player_guard.joined_game_id = Some(self.id);
+        self.player_list.push(player_guard.id);
+        drop(player_guard);
+        if self.running {
+            Self::send_to_player_arc(
+                player,
+                &MessageEvent::new("current_state", self.grid.clone())
+            );
+        }
+    }
     pub fn ready_toggle(&self, player: &Arc<Mutex<Player>>) -> Status {
         if self.running {
             return Status::new("error", "Game is already running.");
@@ -118,8 +126,14 @@ impl Game {
         }
         Status::new("ok", "")
     }
-
-    fn send_to_player(
+    fn send_to_player(player: &Player, msg: &MessageEvent) {
+        player.tx.send(msg.clone()).unwrap();
+    }
+    fn send_to_player_arc(player: &Arc<Mutex<Player>>, msg: &MessageEvent) {
+        let player_guard = player.lock().unwrap();
+        Self::send_to_player(&player_guard, msg);
+    }
+    fn send_to_player_id(
         &self,
         player_id: u32,
         msg: &MessageEvent,
@@ -128,12 +142,12 @@ impl Game {
         let player = get_object(players, |p| { p.lock().unwrap().id == player_id }).expect(
             "Unable to find player"
         );
-        player.lock().unwrap().tx.send(msg.clone()).unwrap();
+        Self::send_to_player_arc(&player, msg);
     }
 
     fn broadcast(&self, msg: &MessageEvent, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
         for player in &self.player_list {
-            self.send_to_player(*player, msg, players);
+            self.send_to_player_id(*player, msg, players);
         }
     }
 
@@ -195,6 +209,7 @@ impl Game {
 
     pub fn add_move(&self, player: &Arc<Mutex<Player>>, pos: Size) -> bool {
         if
+            !self.running ||
             !self.grid.is_valid_move(&pos) ||
             player.lock().unwrap().id != self.player_list[self.current_turn] // This was observed go out of bounds if player leaves, unable to reproduce again
         {
