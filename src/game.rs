@@ -161,7 +161,7 @@ impl Game {
         }
 
         let index = index_option.unwrap();
-        if index > self.current_turn {
+        if index < self.current_turn {
             self.current_turn -= 1;
         }
 
@@ -196,7 +196,7 @@ impl Game {
     pub fn add_move(&self, player: &Arc<Mutex<Player>>, pos: Size) -> bool {
         if
             !self.grid.is_valid_move(&pos) ||
-            player.lock().unwrap().id != self.player_list[self.current_turn]
+            player.lock().unwrap().id != self.player_list[self.current_turn] // This was observed go out of bounds if player leaves, unable to reproduce again
         {
             return false;
         }
