@@ -14,7 +14,14 @@ use game::Game;
 use tungstenite::accept;
 use crate::common::Size;
 use crate::player::Player;
-use crate::net::{ MessageEvent, GameCreationData, Status, broadcast_games, broadcast_players };
+use crate::net::{
+    broadcast_games,
+    broadcast_players,
+    GameCreationData,
+    MessageEvent,
+    PlayerImageResponse,
+    Status,
+};
 
 /// A WebSocket echo server
 fn main() {
@@ -203,6 +210,26 @@ fn handle_connection(
                         response = MessageEvent::new(
                             event.event,
                             Status::new("error", "You are not in a game.")
+                        );
+                    }
+                }
+                "get_image" => {
+                    let json = event.content;
+                    let id: u32 = common::from_json(&json).unwrap();
+
+                    let result = common::get_object(&players, |p| p.lock().unwrap().id == id);
+                    if result.is_some() {
+                        response = MessageEvent::new(
+                            "player_image",
+                            PlayerImageResponse::new(
+                                id,
+                                result.unwrap().lock().unwrap().get_image()
+                            )
+                        );
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", format!("Played with id {} not found.", id))
                         );
                     }
                 }

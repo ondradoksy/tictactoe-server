@@ -1,6 +1,7 @@
 use std::sync::{ mpsc::Sender, Arc, Mutex };
-
+use image::{ codecs::png::PngEncoder, ImageBuffer, ImageEncoder, Rgba };
 use serde::Serialize;
+use base64::{ prelude::BASE64_STANDARD, Engine };
 
 use crate::{
     net::{ MessageEvent, GameJoinData, Status, broadcast_players, send_to_player },
@@ -18,6 +19,8 @@ pub(crate) struct Player {
     pub joined_game_id: Option<u32>,
     pub ready: bool,
     pub name: String,
+    #[serde(skip_serializing)]
+    image: Option<String>,
 }
 impl Player {
     pub fn new(id: u32, tx: Sender<MessageEvent>) -> Self {
@@ -28,6 +31,7 @@ impl Player {
             joined_game_id: None,
             ready: false,
             name: "Unnamed".to_string(),
+            image: None,
         }
     }
     pub fn join_game(
@@ -62,6 +66,59 @@ impl Player {
         broadcast_players(&players);
         send_to_player(&player, &MessageEvent::new("joined_game", GameJoinData::new(id)));
         MessageEvent::new(event.event.clone(), Status::new("ok", ""))
+    }
+
+    /// Returns the player's image encoded in base64.
+    pub fn get_image(&mut self) -> String {
+        if self.image.is_none() {
+            self.image = Some(self.generate_image());
+        }
+        self.image.clone().unwrap()
+    }
+
+    /// Generates an image with a pattern using a function.
+    fn generate_image(&self) -> String {
+        // Create buffer
+        let img = ImageBuffer::from_fn(16, 16, self.get_pattern_fn());
+
+        // Write the image to a Vec<u8>
+        let mut buffer: Vec<u8> = Vec::new();
+        PngEncoder::new(&mut buffer)
+            .write_image(&img, img.width(), img.height(), image::ColorType::Rgba8)
+            .unwrap();
+
+        // Encode the buffer as base64
+        BASE64_STANDARD.encode(&buffer)
+    }
+
+    /// Returns a function used to geneerate a pattern in a new image.
+    fn get_pattern_fn(&self) -> Box<dyn Fn(u32, u32) -> Rgba<u8>> {
+        let primary_color = Rgba([
+            if self.id % 4 == 3 { 128 } else { 0 },
+            if self.id % 4 == 2 { 128 } else { 0 },
+            if self.id % 4 == 1 { 128 } else { 0 },
+            255,
+        ]);
+        let secondary_color = Rgba([
+            if self.id % 3 == 0 { 255 } else { 0 },
+            if self.id % 3 == 1 { 255 } else { 0 },
+            if self.id % 3 == 2 { 255 } else { 0 },
+            255,
+        ]);
+        match self.id % 3 {
+            2 =>
+                Box::new(move |_x, y| {
+                    if y % 2 == 0 { primary_color } else { secondary_color }
+                }),
+            1 =>
+                Box::new(move |x, _y| {
+                    if x % 2 == 0 { primary_color } else { secondary_color }
+                }),
+            _ =>
+                Box::new(move |x, y| {
+                    if x % 2 == 0 && y % 2 == 0 { primary_color } else { secondary_color }
+                }),
+        }
     }
 }
 impl PartialEq for Player {

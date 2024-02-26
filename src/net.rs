@@ -172,3 +172,24 @@ pub(crate) fn broadcast(players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>, message: 
 pub(crate) fn send_to_player(player: &Arc<Mutex<Player>>, message: &MessageEvent) {
     player.lock().unwrap().tx.send(message.clone()).expect("Unable to send message");
 }
+
+#[derive(Serialize)]
+pub(crate) struct PlayerImageResponse {
+    pub id: u32,
+    pub image: String,
+}
+
+impl PlayerImageResponse {
+    pub fn new(id: u32, image: String) -> Self {
+        Self {
+            id: id,
+            image: image,
+        }
+    }
+}
+
+impl From<PlayerImageResponse> for String {
+    fn from(value: PlayerImageResponse) -> Self {
+        serde_json::to_string(&value).unwrap()
+    }
+}
