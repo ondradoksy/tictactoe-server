@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Serialize)]
 pub(crate) struct Player {
-    pub id: u32,
+    pub id: i32,
     #[serde(skip_serializing)]
     pub tx: Sender<MessageEvent>,
     #[serde(skip_serializing)]
@@ -23,7 +23,7 @@ pub(crate) struct Player {
     image: Option<String>,
 }
 impl Player {
-    pub fn new(id: u32, tx: Sender<MessageEvent>) -> Self {
+    pub fn new(id: i32, tx: Sender<MessageEvent>) -> Self {
         Self {
             id: id,
             tx: tx,

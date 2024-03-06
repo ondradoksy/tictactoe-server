@@ -175,12 +175,12 @@ pub(crate) fn send_to_player(player: &Arc<Mutex<Player>>, message: &MessageEvent
 
 #[derive(Serialize)]
 pub(crate) struct PlayerImageResponse {
-    pub id: u32,
+    pub id: i32,
     pub image: String,
 }
 
 impl PlayerImageResponse {
-    pub fn new(id: u32, image: String) -> Self {
+    pub fn new(id: i32, image: String) -> Self {
         Self {
             id: id,
             image: image,

@@ -9,7 +9,6 @@ pub(crate) struct Size {
 }
 
 impl Size {
-    #[cfg(test)]
     pub fn new(x: u32, y: u32) -> Self {
         Self {
             x: x,

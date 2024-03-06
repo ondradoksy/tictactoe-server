@@ -31,7 +31,7 @@ fn main() {
     let server = TcpListener::bind(listen_ip).unwrap();
     println!("Listening on {}", listen_ip);
 
-    let mut player_id_counter: u32 = 0;
+    let mut player_id_counter: i32 = 0;
     let players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>> = Arc::new(
         Mutex::new(Vec::<Arc<Mutex<Player>>>::new())
     );
@@ -61,7 +61,7 @@ fn main() {
 
 fn handle_connection(
     stream: TcpStream,
-    unique_id: u32,
+    unique_id: i32,
     players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
     games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>>,
     game_id_counter: Arc<Mutex<u32>>
@@ -215,7 +215,7 @@ fn handle_connection(
                 }
                 "get_image" => {
                     let json = event.content;
-                    let id: u32 = common::from_json(&json).unwrap();
+                    let id: i32 = common::from_json(&json).unwrap();
 
                     let result = common::get_object(&players, |p| p.lock().unwrap().id == id);
                     if result.is_some() {

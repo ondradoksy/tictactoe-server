@@ -16,8 +16,8 @@ pub(crate) struct Game {
     grid: Grid,
     #[serde(skip_serializing)]
     pub tx: Sender<InternalMessage>,
-    player_list: Vec<u32>,
-    creator: u32,
+    player_list: Vec<i32>,
+    creator: i32,
     current_turn: usize,
     hotjoin: bool,
     player_limit: usize,
@@ -71,7 +71,20 @@ impl Game {
                     let mut game_guard = game.lock().unwrap();
                     let m = PlayerMove::new(msg.player.lock().unwrap().id, msg.position.unwrap());
                     game_guard.broadcast_move(&m, &players);
-                    game_guard.grid.add(m);
+                    game_guard.grid.add(m.clone());
+
+                    let moves = game_guard.grid.check_win(
+                        &m.position.clone(),
+                        game_guard.length_to_win
+                    );
+                    if moves.len() > 0 {
+                        for mv in moves {
+                            game_guard.broadcast_move(&mv, &players);
+                            game_guard.grid.add(mv);
+                        }
+                        // TODO: Implement score
+                    }
+
                     game_guard.next_turn(&players);
                 }
                 InternalMessageKind::PlayerLeave => {
@@ -135,7 +148,7 @@ impl Game {
     }
     fn send_to_player_id(
         &self,
-        player_id: u32,
+        player_id: i32,
         msg: &MessageEvent,
         players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>
     ) {
