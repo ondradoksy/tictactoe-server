@@ -4,6 +4,7 @@ mod player;
 mod net;
 mod common;
 mod player_move;
+mod bot;
 
 use std::{ io, env };
 use std::net::{ TcpListener, TcpStream };
