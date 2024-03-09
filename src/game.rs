@@ -1,11 +1,12 @@
-use std::{ sync::{ Mutex, Arc, mpsc::{ self, Sender, Receiver } }, thread::spawn };
+use std::{ sync::{ mpsc::{ self, Receiver, Sender }, Arc, Mutex }, thread::Builder };
 
 use serde::Serialize;
 use crate::{
+    bot::Bot,
+    common::{ get_object, get_unique_id, Size },
     grid::Grid,
     net::{ GameCreationData, InternalMessage, InternalMessageKind, MessageEvent, Status },
     player::Player,
-    common::{ Size, get_object },
     player_move::PlayerMove,
 };
 
@@ -29,7 +30,8 @@ impl Game {
         parameters: &GameCreationData,
         game_id_counter: &Arc<Mutex<u32>>,
         creator: &Arc<Mutex<Player>>,
-        players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>
+        players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
+        player_id_counter: &Arc<Mutex<i32>>
     ) -> Arc<Mutex<Self>> {
         let (tx, rx) = mpsc::channel::<InternalMessage>();
         let mut id_counter_locked = game_id_counter.lock().unwrap();
@@ -48,19 +50,24 @@ impl Game {
         *id_counter_locked += 1;
         let self_arc = Arc::new(Mutex::new(instance));
         let players_clone = players.clone();
-        spawn({
-            let self_arc_clone = Arc::clone(&self_arc);
-            move || {
-                Self::run(self_arc_clone, rx, players_clone);
-            }
-        });
+        Builder::new()
+            .name(format!("Game {} Thread", *id_counter_locked))
+            .spawn({
+                let self_arc_clone = self_arc.clone();
+                let player_id_counter_clone = player_id_counter.clone();
+                move || {
+                    Self::run(self_arc_clone, rx, players_clone, player_id_counter_clone);
+                }
+            })
+            .expect("Could not create thread");
         self_arc
     }
 
     pub fn run(
         game: Arc<Mutex<Game>>,
         rx: Receiver<InternalMessage>,
-        players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>>
+        players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
+        player_id_counter: Arc<Mutex<i32>>
     ) {
         for msg in rx.iter() {
             match msg.kind {
@@ -96,10 +103,28 @@ impl Game {
                         game_guard.start(&players);
                     }
                 }
+                InternalMessageKind::AddBot => {
+                    let bot_id = get_unique_id(&player_id_counter);
+                    let _bot = Bot::new(bot_id, msg.bot_type, &players, &game);
+                }
+                InternalMessageKind::CurrentState => {
+                    game.lock().unwrap().send_current_state(&msg.player);
+                }
             }
             println!("message");
         }
     }
+
+    fn are_all_players_bots(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) -> bool {
+        for player in players.lock().unwrap().iter() {
+            if !player.lock().unwrap().is_bot {
+                return false;
+            }
+        }
+
+        true
+    }
+
     fn can_start(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) -> bool {
         for p_id in &self.player_list {
             let player = get_object(&players, |p| { &p.lock().unwrap().id == p_id });
@@ -122,11 +147,11 @@ impl Game {
         self.player_list.push(player_guard.id);
         drop(player_guard);
         if self.running {
-            Self::send_to_player_arc(
-                player,
-                &MessageEvent::new("current_state", self.grid.clone())
-            );
+            self.send_current_state(player);
         }
+    }
+    fn send_current_state(&self, player: &Arc<Mutex<Player>>) {
+        Self::send_to_player_arc(player, &MessageEvent::new("current_state", self.grid.clone()));
     }
     pub fn ready_toggle(&self, player: &Arc<Mutex<Player>>) -> Status {
         if self.running {
@@ -166,13 +191,24 @@ impl Game {
 
     fn broadcast_turn(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
         self.broadcast(
-            &MessageEvent::new("turn", serde_json::to_string(&self.current_turn).unwrap()),
+            &MessageEvent::new(
+                "turn",
+                serde_json
+                    ::to_string(
+                        if self.current_turn < self.player_list.len() {
+                            &self.player_list[self.current_turn]
+                        } else {
+                            &0
+                        }
+                    )
+                    .unwrap()
+            ),
             players
         );
     }
 
     fn broadcast_move(&self, m: &PlayerMove, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
-        self.broadcast(&MessageEvent::new("new_move", serde_json::to_string(m).unwrap()), players);
+        self.broadcast(&MessageEvent::new("new_move", m), players);
     }
 
     fn remove_player(
@@ -200,6 +236,10 @@ impl Game {
     }
 
     fn next_turn(&mut self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
+        if self.are_all_players_bots(players) {
+            return;
+        }
+
         self.current_turn += 1;
         if self.current_turn >= self.player_list.len() {
             self.current_turn = 0;
@@ -219,7 +259,11 @@ impl Game {
         self.tx.send(InternalMessage::new_join(player.clone())).unwrap();
         true
     }
+    pub fn join_player_forced(&self, player: &Arc<Mutex<Player>>) {
+        self.tx.send(InternalMessage::new_join(player.clone())).unwrap();
+    }
 
+    /// Returns true if the move is allowed and successful
     pub fn add_move(&self, player: &Arc<Mutex<Player>>, pos: Size) -> bool {
         if
             !self.running ||
@@ -235,6 +279,18 @@ impl Game {
     pub fn leave_player(&self, player: &Arc<Mutex<Player>>) {
         self.tx.send(InternalMessage::new_leave(player.clone())).unwrap();
     }
+    pub fn add_bot(&self, player: &Arc<Mutex<Player>>, bot_type: String) -> bool {
+        if player.lock().unwrap().id != self.creator {
+            return false;
+        }
+
+        self.tx.send(InternalMessage::new_add_bot(player.clone(), bot_type)).unwrap();
+
+        true
+    }
+    pub fn request_current_state(&self, player: &Arc<Mutex<Player>>) {
+        self.tx.send(InternalMessage::new_current_state(player.clone())).unwrap();
+    }
 }
 
 #[test]
@@ -245,7 +301,14 @@ fn player_join() {
     players_all.lock().unwrap().push(player.clone());
     let game_id_counter = Arc::new(Mutex::new(0));
     let game_parameters = GameCreationData::new(Size::new(5, 5), true, 10, 4);
-    let game = Game::new(&game_parameters, &game_id_counter, &player.clone(), &players_all);
+    let player_id_counter = Arc::new(Mutex::new(0));
+    let game = Game::new(
+        &game_parameters,
+        &game_id_counter,
+        &player.clone(),
+        &players_all,
+        &player_id_counter
+    );
 
     let mut players: Vec<Arc<Mutex<Player>>> = Vec::new();
     for i in 1..10 {

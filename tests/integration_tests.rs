@@ -96,7 +96,7 @@ fn player_list() {
                     id: i,
                     joined_game_id: Null,
                     ready: false,
-                    name: "Unnamed"
+                    name: format!("Player_{}", i)
         })
                 ),
             child

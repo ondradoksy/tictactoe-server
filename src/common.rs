@@ -46,3 +46,10 @@ pub fn find_index<T, P>(arr: &Vec<Arc<Mutex<T>>>, predicate: P) -> Option<usize>
 {
     arr.iter().position(predicate)
 }
+
+pub fn get_unique_id(id_counter: &Arc<Mutex<i32>>) -> i32 {
+    let mut guard = id_counter.lock().unwrap();
+    let id = *guard;
+    *guard += 1;
+    id
+}

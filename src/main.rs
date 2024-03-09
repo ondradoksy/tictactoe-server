@@ -9,11 +9,11 @@ mod bot;
 use std::{ io, env };
 use std::net::{ TcpListener, TcpStream };
 use std::sync::{ Mutex, Arc, mpsc };
-use std::thread::spawn;
+use std::thread::Builder;
 use std::time::Duration;
 use game::Game;
 use tungstenite::accept;
-use crate::common::Size;
+use crate::common::{ get_unique_id, Size };
 use crate::player::Player;
 use crate::net::{
     broadcast_games,
@@ -32,7 +32,7 @@ fn main() {
     let server = TcpListener::bind(listen_ip).unwrap();
     println!("Listening on {}", listen_ip);
 
-    let mut player_id_counter: i32 = 0;
+    let player_id_counter: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
     let players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>> = Arc::new(
         Mutex::new(Vec::<Arc<Mutex<Player>>>::new())
     );
@@ -42,27 +42,31 @@ fn main() {
     let game_id_counter: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
 
     for stream in server.incoming() {
-        spawn({
-            let players_clone = Arc::clone(&players);
-            let games_clone = Arc::clone(&games);
-            let game_id_counter_clone = Arc::clone(&game_id_counter);
-            move || {
-                handle_connection(
-                    stream.unwrap(),
-                    player_id_counter,
-                    players_clone,
-                    games_clone,
-                    game_id_counter_clone
-                );
-            }
-        });
-        player_id_counter += 1;
+        Builder::new()
+            .name("Player Handler Thread".to_string())
+            .spawn({
+                let players_clone = players.clone();
+                let games_clone = games.clone();
+                let game_id_counter_clone = game_id_counter.clone();
+                let player_id_counter_clone = player_id_counter.clone();
+
+                move || {
+                    handle_connection(
+                        stream.unwrap(),
+                        player_id_counter_clone,
+                        players_clone,
+                        games_clone,
+                        game_id_counter_clone
+                    );
+                }
+            })
+            .expect("Could not create thread");
     }
 }
 
 fn handle_connection(
     stream: TcpStream,
-    unique_id: i32,
+    player_id_counter: Arc<Mutex<i32>>,
     players: Arc<Mutex<Vec<Arc<Mutex<Player>>>>>,
     games: Arc<Mutex<Vec<Arc<Mutex<Game>>>>>,
     game_id_counter: Arc<Mutex<u32>>
@@ -83,7 +87,10 @@ fn handle_connection(
     // Create channel
     let (tx, rx) = mpsc::channel();
 
-    let player_arc = Arc::new(Mutex::new(Player::new(unique_id, tx)));
+    // Handle ID
+    let my_id = get_unique_id(&player_id_counter);
+
+    let player_arc = Arc::new(Mutex::new(Player::new(my_id, tx)));
 
     // Add new player to list
     players.lock().unwrap().push(player_arc.clone());
@@ -143,7 +150,8 @@ fn handle_connection(
                             &game_parameters.unwrap(),
                             &game_id_counter,
                             &player_arc,
-                            &players
+                            &players,
+                            &player_id_counter
                         );
                         games.lock().unwrap().push(game);
                         response = MessageEvent::new("create_game", Status::new("ok", ""));
@@ -234,6 +242,30 @@ fn handle_connection(
                         );
                     }
                 }
+                "add_bot" => {
+                    if player_arc.lock().unwrap().joined_game.is_some() {
+                        // Clone the Option<Arc<Mutex<Game>>> to prevent the player being locked resulting in the thread waiting forever
+                        let game = player_arc.lock().unwrap().joined_game.clone().unwrap();
+
+                        let game_locked = game.lock().unwrap();
+                        if game_locked.add_bot(&player_arc, event.content) {
+                            response = MessageEvent::new(event.event, Status::new("ok", ""));
+                        } else {
+                            response = MessageEvent::new(
+                                event.event,
+                                Status::new(
+                                    "error",
+                                    "You are not allowed to add a bot to this game."
+                                )
+                            );
+                        }
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", "You are not in a game.")
+                        );
+                    }
+                }
                 _ => {
                     response = MessageEvent::new(
                         event.event,
@@ -273,11 +305,11 @@ fn handle_connection(
     drop(player_guard);
 
     // Remove player from list
-    println!("Removing player {}", unique_id);
+    println!("Removing player {}", my_id);
     let mut players_locked = players.lock().unwrap();
     let index = players_locked
         .iter()
-        .position(|p| p.lock().unwrap().id == unique_id)
+        .position(|p| p.lock().unwrap().id == my_id)
         .unwrap();
     players_locked.swap_remove(index);
     drop(players_locked);

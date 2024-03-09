@@ -1,8 +1,9 @@
-use serde::Serialize;
+use serde::{ Deserialize, Serialize };
+use serde_json::Error;
 
 use crate::{ common::Size, player_move::PlayerMove };
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Grid {
     size: Size,
     moves: Vec<PlayerMove>,
@@ -14,6 +15,9 @@ impl Grid {
             size: size,
             moves: Vec::new(),
         }
+    }
+    pub fn from_string(s: &str) -> Result<Self, Error> {
+        serde_json::from_str(s)
     }
     pub fn get_pos(&self, pos: &Size) -> Option<i32> {
         let index = self.get_index(pos);
@@ -174,6 +178,18 @@ impl Grid {
         }
 
         Vec::new()
+    }
+    pub fn get_possible_moves(&self, id: i32) -> Vec<PlayerMove> {
+        let mut moves = Vec::new();
+        for i in 0..self.size.x {
+            for j in 0..self.size.y {
+                let pos = Size::new(i, j);
+                if self.is_empty(&pos) {
+                    moves.push(PlayerMove::new(id, pos));
+                }
+            }
+        }
+        moves
     }
 }
 

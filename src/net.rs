@@ -82,6 +82,7 @@ pub(crate) struct InternalMessage {
     pub kind: InternalMessageKind,
     pub player: Arc<Mutex<Player>>,
     pub position: Option<Size>,
+    pub bot_type: Option<String>,
 }
 
 impl InternalMessage {
@@ -90,6 +91,7 @@ impl InternalMessage {
             kind: InternalMessageKind::PlayerJoin,
             player: player,
             position: None,
+            bot_type: None,
         }
     }
     pub fn new_move(player: Arc<Mutex<Player>>, pos: Size) -> Self {
@@ -97,6 +99,7 @@ impl InternalMessage {
             kind: InternalMessageKind::PlayerMove,
             player: player,
             position: Some(pos),
+            bot_type: None,
         }
     }
     pub fn new_leave(player: Arc<Mutex<Player>>) -> Self {
@@ -104,6 +107,7 @@ impl InternalMessage {
             kind: InternalMessageKind::PlayerLeave,
             player: player,
             position: None,
+            bot_type: None,
         }
     }
     pub fn new_ready(player: Arc<Mutex<Player>>) -> Self {
@@ -111,6 +115,23 @@ impl InternalMessage {
             kind: InternalMessageKind::PlayerReady,
             player: player,
             position: None,
+            bot_type: None,
+        }
+    }
+    pub fn new_add_bot(player: Arc<Mutex<Player>>, bot_type: String) -> Self {
+        Self {
+            kind: InternalMessageKind::AddBot,
+            player: player,
+            position: None,
+            bot_type: Some(bot_type),
+        }
+    }
+    pub fn new_current_state(player: Arc<Mutex<Player>>) -> Self {
+        Self {
+            kind: InternalMessageKind::CurrentState,
+            player: player,
+            position: None,
+            bot_type: None,
         }
     }
 }
@@ -120,6 +141,8 @@ pub(crate) enum InternalMessageKind {
     PlayerMove,
     PlayerLeave,
     PlayerReady,
+    AddBot,
+    CurrentState,
 }
 
 #[derive(Serialize)]
