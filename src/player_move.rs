@@ -1,8 +1,8 @@
-use serde::{ Deserialize, Serialize };
+use serde::Serialize;
 
 use crate::common::Size;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Clone)]
 pub(crate) struct PlayerMove {
     pub player: i32,
     pub position: Size,
@@ -13,9 +13,6 @@ impl PlayerMove {
             player: player,
             position: pos,
         }
-    }
-    pub fn from_string(s: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(s)
     }
 }
 impl Into<String> for &PlayerMove {

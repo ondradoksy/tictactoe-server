@@ -2,7 +2,7 @@ use std::sync::{ Arc, Mutex };
 
 use serde::{ Serialize, Deserialize };
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub(crate) struct Size {
     pub x: u32,
     pub y: u32,

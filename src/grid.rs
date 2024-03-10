@@ -1,11 +1,10 @@
-use serde::{ Deserialize, Serialize };
-use serde_json::Error;
+use serde::Serialize;
 
 use crate::{ common::Size, player_move::PlayerMove };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Clone)]
 pub(crate) struct Grid {
-    size: Size,
+    pub size: Size,
     moves: Vec<PlayerMove>,
 }
 
@@ -16,9 +15,6 @@ impl Grid {
             moves: Vec::new(),
         }
     }
-    pub fn from_string(s: &str) -> Result<Self, Error> {
-        serde_json::from_str(s)
-    }
     pub fn get_pos(&self, pos: &Size) -> Option<i32> {
         let index = self.get_index(pos);
 
@@ -26,6 +22,9 @@ impl Grid {
             return Some(self.moves[index.unwrap()].player);
         }
         None
+    }
+    pub fn add_range(&mut self, moves: &Vec<PlayerMove>) {
+        self.moves.extend_from_slice(moves.as_slice());
     }
     pub fn add(&mut self, m: PlayerMove) {
         self.moves.push(m);
@@ -77,7 +76,6 @@ impl Grid {
             length[1] += 1;
             i += 1;
         }
-        println!("{:?}", length);
         if length[0] + length[1] >= win_length {
             for j in 0..length[0] {
                 moves.push(PlayerMove::new(blocked_id, Size::new(pos.x - j, pos.y)));

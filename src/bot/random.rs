@@ -1,4 +1,4 @@
-use crate::{ bot::botlogic::BotLogic, Size, grid::Grid };
+use crate::{ bot::botlogic::BotLogic, Size, game::Game };
 
 use rand::Rng;
 
@@ -9,8 +9,8 @@ impl RandomBot {
     }
 }
 impl BotLogic for RandomBot {
-    fn generate_move(&self, id: i32, grid: &Grid) -> Size {
-        let moves = grid.get_possible_moves(id);
+    fn generate_move(&self, id: i32, game: &Game) -> Size {
+        let moves = game.grid.get_possible_moves(id);
 
         if moves.len() < 1 {
             return Size::new(0, 0);

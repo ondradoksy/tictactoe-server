@@ -21,16 +21,16 @@ use crate::{
 pub(crate) struct Game {
     pub id: u32,
     #[serde(skip_serializing)]
-    grid: Grid,
+    pub grid: Grid,
     #[serde(skip_serializing)]
     pub tx: Sender<InternalMessage>,
-    player_list: Vec<i32>,
+    pub player_list: Vec<i32>,
     creator: i32,
-    current_turn: usize,
+    pub current_turn: usize,
     hotjoin: bool,
     player_limit: usize,
     running: bool,
-    length_to_win: u32,
+    pub win_length: u32,
     width: u32,
     height: u32,
 }
@@ -54,7 +54,7 @@ impl Game {
             hotjoin: parameters.hotjoin,
             player_limit: parameters.player_limit,
             running: false,
-            length_to_win: parameters.length_to_win,
+            win_length: parameters.length_to_win,
             width: parameters.size.x,
             height: parameters.size.y,
         };
@@ -94,7 +94,7 @@ impl Game {
 
                     let moves = game_guard.grid.check_win(
                         &m.position.clone(),
-                        game_guard.length_to_win
+                        game_guard.win_length
                     );
                     if moves.len() > 0 {
                         for mv in moves {
@@ -102,6 +102,11 @@ impl Game {
                             game_guard.grid.add(mv);
                         }
                         // TODO: Implement score
+                    }
+
+                    if game_guard.grid.get_possible_moves(0).len() == 0 {
+                        game_guard.grid = Grid::new(game_guard.grid.size);
+                        game_guard.broadcast_current_state(&players);
                     }
 
                     game_guard.next_turn(&players);
@@ -127,12 +132,11 @@ impl Game {
         }
     }
 
-    pub fn is_running(&self) -> bool {
-        self.running
-    }
-
     fn are_all_players_bots(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) -> bool {
         for player in players.lock().unwrap().iter() {
+            if !self.player_list.contains(&player.lock().unwrap().id) {
+                continue;
+            }
             if !player.lock().unwrap().is_bot {
                 return false;
             }
@@ -166,6 +170,14 @@ impl Game {
             self.send_current_state(player);
         }
     }
+    fn broadcast_current_state(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
+        for player in players.lock().unwrap().iter() {
+            if !self.player_list.contains(&player.lock().unwrap().id) {
+                continue;
+            }
+            self.send_current_state(player);
+        }
+    }
     fn send_current_state(&self, player: &Arc<Mutex<Player>>) {
         Self::send_to_player_arc(player, &MessageEvent::new("current_state", self.grid.clone()));
     }
@@ -193,10 +205,11 @@ impl Game {
         msg: &MessageEvent,
         players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>
     ) {
-        let player = get_object(players, |p| { p.lock().unwrap().id == player_id }).expect(
-            "Unable to find player"
-        );
-        Self::send_to_player_arc(&player, msg);
+        let player = get_object(players, |p| { p.lock().unwrap().id == player_id });
+        if player.is_none() {
+            return;
+        }
+        Self::send_to_player_arc(&player.unwrap(), msg);
     }
 
     fn broadcast(&self, msg: &MessageEvent, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
@@ -253,6 +266,7 @@ impl Game {
 
     fn next_turn(&mut self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
         if self.are_all_players_bots(players) {
+            println!("All players are bots!");
             self.running = false;
             return;
         }

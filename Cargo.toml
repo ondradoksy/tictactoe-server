@@ -16,3 +16,6 @@ tungstenite = "0.21.0"
 
 [dev-dependencies]
 jzon = "0.12.5"
+
+[profile.dev]
+debug = true

@@ -266,6 +266,19 @@ fn handle_connection(
                         );
                     }
                 }
+                "current_state" => {
+                    // Check player is in a game
+                    if player_arc.lock().unwrap().joined_game.is_some() {
+                        // Clone the Option<Arc<Mutex<Game>>> to prevent the player being locked resulting in the thread waiting forever
+                        let game = player_arc.lock().unwrap().joined_game.clone().unwrap();
+                        game.lock().unwrap().request_current_state(&player_arc);
+                    } else {
+                        response = MessageEvent::new(
+                            event.event,
+                            Status::new("error", "You are not in a game.")
+                        );
+                    }
+                }
                 _ => {
                     response = MessageEvent::new(
                         event.event,
