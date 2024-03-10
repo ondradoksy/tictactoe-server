@@ -5,7 +5,14 @@ use crate::{
     bot::Bot,
     common::{ get_object, get_unique_id, Size },
     grid::Grid,
-    net::{ GameCreationData, InternalMessage, InternalMessageKind, MessageEvent, Status },
+    net::{
+        broadcast_players,
+        GameCreationData,
+        InternalMessage,
+        InternalMessageKind,
+        MessageEvent,
+        Status,
+    },
     player::Player,
     player_move::PlayerMove,
 };
@@ -77,6 +84,7 @@ impl Game {
             match msg.kind {
                 InternalMessageKind::PlayerJoin => {
                     game.lock().unwrap().handle_player_join(&game, &msg.player);
+                    broadcast_players(&players);
                 }
                 InternalMessageKind::PlayerMove => {
                     let mut game_guard = game.lock().unwrap();
