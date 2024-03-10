@@ -74,6 +74,10 @@ impl Game {
         self_arc
     }
 
+    pub fn is_running(&self) -> bool {
+        self.running
+    }
+
     pub fn run(
         game: Arc<Mutex<Game>>,
         rx: Receiver<InternalMessage>,

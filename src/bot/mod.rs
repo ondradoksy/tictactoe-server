@@ -71,6 +71,9 @@ impl Bot {
         }
     }
     fn process_turn(&self, content: &str, bot_logic: &Box<dyn BotLogic>) {
+        if !self.game.lock().unwrap().is_running() {
+            return;
+        }
         let cur_result: Result<i32, serde_json::Error> = serde_json::from_str(content);
 
         if cur_result.is_err() {
