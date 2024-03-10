@@ -24,6 +24,8 @@ pub(crate) struct Game {
     player_limit: usize,
     running: bool,
     length_to_win: u32,
+    width: u32,
+    height: u32,
 }
 impl Game {
     pub fn new(
@@ -46,6 +48,8 @@ impl Game {
             player_limit: parameters.player_limit,
             running: false,
             length_to_win: parameters.length_to_win,
+            width: parameters.size.x,
+            height: parameters.size.y,
         };
         *id_counter_locked += 1;
         let self_arc = Arc::new(Mutex::new(instance));

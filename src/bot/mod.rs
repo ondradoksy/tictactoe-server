@@ -4,13 +4,12 @@ mod random;
 use std::{ sync::{ mpsc::{ self, Receiver }, Arc, Mutex }, thread::Builder };
 
 use crate::{
+    bot::{ botlogic::BotLogic, random::RandomBot },
     game::Game,
     grid::Grid,
-    net::MessageEvent,
+    net::{ broadcast_players, MessageEvent },
     player::Player,
     player_move::PlayerMove,
-    bot::botlogic::BotLogic,
-    bot::random::RandomBot,
 };
 
 pub(crate) struct Bot {
@@ -42,6 +41,7 @@ impl Bot {
 
         players.lock().unwrap().push(s.player.clone());
         game.lock().unwrap().join_player_forced(&s.player);
+        broadcast_players(players);
 
         let s_arc = Arc::new(Mutex::new(s));
         let s_clone = s_arc.clone();

@@ -205,7 +205,9 @@ fn games_list() {
                         hotjoin: true,
                         player_limit: 10,
                         running: false,
-                        length_to_win: 3
+                        length_to_win: 3,
+                        width: i + 3,
+                        height: i + 3,
                     })
                             ),
                         child
