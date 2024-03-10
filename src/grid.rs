@@ -69,20 +69,21 @@ impl Grid {
             i += 1;
         }
         // right
-        i = i;
-        while i < win_length - length[0] && pos.x + i < self.size.x {
+        i = 1;
+        while i <= win_length - length[0] && pos.x + i < self.size.x {
             if self.get_pos(&Size::new(pos.x + i, pos.y)) != player_id {
                 break;
             }
             length[1] += 1;
             i += 1;
         }
+        println!("{:?}", length);
         if length[0] + length[1] >= win_length {
             for j in 0..length[0] {
                 moves.push(PlayerMove::new(blocked_id, Size::new(pos.x - j, pos.y)));
             }
             for j in 0..length[1] {
-                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j, pos.y)));
+                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j + 1, pos.y)));
             }
             return moves;
         }
@@ -100,7 +101,7 @@ impl Grid {
         }
         // down
         i = 1;
-        while i < win_length - length[0] && pos.y + i < self.size.y {
+        while i <= win_length - length[0] && pos.y + i < self.size.y {
             if self.get_pos(&Size::new(pos.x, pos.y + i)) != player_id {
                 break;
             }
@@ -112,7 +113,7 @@ impl Grid {
                 moves.push(PlayerMove::new(blocked_id, Size::new(pos.x, pos.y - j)));
             }
             for j in 0..length[1] {
-                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x, pos.y + j)));
+                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x, pos.y + j + 1)));
             }
             return moves;
         }
@@ -130,7 +131,7 @@ impl Grid {
         }
         // down-right
         i = 1;
-        while i < win_length - length[0] && pos.x + i < self.size.x && pos.y + i < self.size.y {
+        while i <= win_length - length[0] && pos.x + i < self.size.x && pos.y + i < self.size.y {
             if self.get_pos(&Size::new(pos.x + i, pos.y + i)) != player_id {
                 break;
             }
@@ -142,7 +143,7 @@ impl Grid {
                 moves.push(PlayerMove::new(blocked_id, Size::new(pos.x - j, pos.y - j)));
             }
             for j in 0..length[1] {
-                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j, pos.y + j)));
+                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j + 1, pos.y + j + 1)));
             }
             return moves;
         }
@@ -160,7 +161,7 @@ impl Grid {
         }
         // up-right
         i = 1;
-        while i < win_length - length[0] && pos.x + i < self.size.x && pos.y >= i {
+        while i <= win_length - length[0] && pos.x + i < self.size.x && pos.y >= i {
             if self.get_pos(&Size::new(pos.x + i, pos.y - i)) != player_id {
                 break;
             }
@@ -172,7 +173,7 @@ impl Grid {
                 moves.push(PlayerMove::new(blocked_id, Size::new(pos.x - j, pos.y + j)));
             }
             for j in 0..length[1] {
-                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j, pos.y - j)));
+                moves.push(PlayerMove::new(blocked_id, Size::new(pos.x + j + 1, pos.y - j - 1)));
             }
             return moves;
         }
