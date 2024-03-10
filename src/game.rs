@@ -119,6 +119,10 @@ impl Game {
         }
     }
 
+    pub fn is_running(&self) -> bool {
+        self.running
+    }
+
     fn are_all_players_bots(&self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) -> bool {
         for player in players.lock().unwrap().iter() {
             if !player.lock().unwrap().is_bot {
@@ -241,6 +245,7 @@ impl Game {
 
     fn next_turn(&mut self, players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>) {
         if self.are_all_players_bots(players) {
+            self.running = false;
             return;
         }
 

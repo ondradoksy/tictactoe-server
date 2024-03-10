@@ -69,7 +69,7 @@ impl Grid {
             i += 1;
         }
         // right
-        i = 0;
+        i = i;
         while i < win_length - length[0] && pos.x + i < self.size.x {
             if self.get_pos(&Size::new(pos.x + i, pos.y)) != player_id {
                 break;
@@ -99,7 +99,7 @@ impl Grid {
             i += 1;
         }
         // down
-        i = 0;
+        i = 1;
         while i < win_length - length[0] && pos.y + i < self.size.y {
             if self.get_pos(&Size::new(pos.x, pos.y + i)) != player_id {
                 break;
@@ -129,7 +129,7 @@ impl Grid {
             i += 1;
         }
         // down-right
-        i = 0;
+        i = 1;
         while i < win_length - length[0] && pos.x + i < self.size.x && pos.y + i < self.size.y {
             if self.get_pos(&Size::new(pos.x + i, pos.y + i)) != player_id {
                 break;
@@ -159,7 +159,7 @@ impl Grid {
             i += 1;
         }
         // up-right
-        i = 0;
+        i = 1;
         while i < win_length - length[0] && pos.x + i < self.size.x && pos.y >= i {
             if self.get_pos(&Size::new(pos.x + i, pos.y - i)) != player_id {
                 break;

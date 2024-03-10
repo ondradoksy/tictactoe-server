@@ -82,7 +82,11 @@ impl Bot {
                 }
             }
 
-            if on_turn && msg.event.as_str() != "turn" {
+            if
+                on_turn &&
+                msg.event.as_str() != "turn" &&
+                bot.lock().unwrap().game.lock().unwrap().is_running()
+            {
                 bot.lock().unwrap().try_make_move(&bot_logic);
             }
         }
@@ -142,7 +146,6 @@ impl Bot {
             self.grid.as_ref().unwrap()
         );
         if !self.game.lock().unwrap().add_move(&self.player.clone(), m) {
-            // TODO: Prevent this from destroying itself if there are no valid moves
             println!("Illegal move, board is likely out-of-date!");
             self.request_current_state();
         }
