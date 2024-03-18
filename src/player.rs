@@ -99,7 +99,7 @@ impl Player {
         // Write the image to a Vec<u8>
         let mut buffer: Vec<u8> = Vec::new();
         PngEncoder::new(&mut buffer)
-            .write_image(&img, img.width(), img.height(), image::ColorType::Rgba8)
+            .write_image(&img, img.width(), img.height(), image::ExtendedColorType::Rgba8)
             .unwrap();
 
         // Encode the buffer as base64
