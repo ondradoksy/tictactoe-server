@@ -3,7 +3,7 @@ use crate::{ bot::botlogic::BotLogic, game::Game, grid::Grid, player_move::Playe
 pub(crate) struct MinMaxBot {}
 impl BotLogic for MinMaxBot {
     fn generate_move(&self, id: i32, game: &Game) -> Size {
-        Self::get_best_move(id, game, 5).unwrap_or(Size::new(0, 0))
+        Self::get_best_move(id, game).unwrap_or(Size::new(0, 0))
     }
     fn get_name(&self) -> String {
         "minmax".to_string()
@@ -13,12 +13,18 @@ impl MinMaxBot {
     pub fn new() -> Self {
         Self {}
     }
-    fn get_best_move(id: i32, game: &Game, depth: u32) -> Option<Size> {
+    fn get_best_move(id: i32, game: &Game) -> Option<Size> {
         let moves = game.grid.get_possible_moves(id);
 
         if moves.len() < 1 {
             return None;
         }
+
+        let depth: u32 = Self::get_depth(
+            moves.len().try_into().expect("Could not convert usize to u32"),
+            100000
+        ) as u32;
+        println!("MINMAX | Chosen depth: {}", depth);
 
         let mut move_counter = 0;
         let total = Self::get_complexity(
@@ -38,7 +44,7 @@ impl MinMaxBot {
             &total
         );
 
-        println!("Proceeding with move {:?} with score {}", best_move, high_score);
+        println!("Proceeding with move {:?} with score {:?}", best_move, high_score);
         Some(best_move)
     }
     fn get_score(
@@ -51,30 +57,32 @@ impl MinMaxBot {
         depth: u32,
         move_counter: &mut u128,
         total: &u128
-    ) -> i32 {
+    ) -> Vec<i32> {
         if *move_counter % 100000 == 0 {
             println!("Processing move {}/{} at depth: {}", move_counter, total, depth);
         }
         *move_counter += 1;
 
-        let mut sum: i32 = 0;
+        let mut sum: Vec<i32> = vec![0; player_list.len()];
 
         grid.add(m.clone());
 
         let moves = grid.check_win(&m.position, *win_length);
 
-        if moves.len() > 0 {
-            sum +=
-                <u32 as TryInto<i32>>::try_into(depth).expect("Could not convert u32 to i32") + 1;
+        let won = moves.len() > 0;
+
+        if won {
+            sum[current_turn] = 2;
+            return sum;
         }
 
         if depth <= 0 {
-            return sum;
+            return vec![1; player_list.len()];
         }
 
         grid.add_range(&moves);
 
-        let next_turn = if current_turn + 1 < player_list.len() { current_turn + 1 } else { 0 };
+        let next_turn = (current_turn + 1) % player_list.len();
 
         let possible_moves = grid.get_possible_moves(player_list[next_turn]);
 
@@ -90,7 +98,9 @@ impl MinMaxBot {
                 move_counter,
                 total
             );
-            sum -= high_score;
+            sum = high_score;
+        } else if !won {
+            return vec![1; player_list.len()];
         }
 
         sum
@@ -105,8 +115,8 @@ impl MinMaxBot {
         depth: u32,
         move_counter: &mut u128,
         total: &u128
-    ) -> (i32, Size) {
-        let mut high_score: i32 = i32::MIN;
+    ) -> (Vec<i32>, Size) {
+        let mut high_score: Vec<i32> = vec![i32::MIN; player_list.len()];
         let mut best_move = moves[0].position;
 
         for m in moves {
@@ -121,7 +131,7 @@ impl MinMaxBot {
                 move_counter,
                 total
             );
-            if score > high_score {
+            if score[current_turn] > high_score[current_turn] {
                 high_score = score;
                 best_move = m.position;
             }
@@ -139,5 +149,15 @@ impl MinMaxBot {
             1 => 1,
             _ => num * Self::get_complexity(num - 1, depth - 1),
         }
+    }
+    fn get_depth(num: u128, complexity: u128) -> u128 {
+        let mut depth = 1;
+        let mut current_complexity = num;
+        while depth < num && current_complexity * (num - depth) < complexity {
+            current_complexity *= num - depth;
+            depth += 1;
+        }
+
+        return depth;
     }
 }

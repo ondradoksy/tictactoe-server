@@ -2,8 +2,6 @@ use crate::{ bot::botlogic::BotLogic, game::Game, grid::Grid, player_move::Playe
 
 use rand::Rng;
 
-use super::random::RandomBot;
-
 pub(crate) struct MCTSBot {}
 impl BotLogic for MCTSBot {
     fn generate_move(&self, id: i32, game: &Game) -> Size {
@@ -14,16 +12,6 @@ impl BotLogic for MCTSBot {
         for i in 0..max_iter {
             println!("MCTS: Iterating... {}/{}", i + 1, max_iter);
             algorithm.iterate(&game.player_list, game.current_turn, &game.grid, game.win_length);
-        }
-
-        for n in algorithm.nodes.iter() {
-            println!(
-                "  uct_score: {} score: {} visits: {} win_rate: {}",
-                n.get_uct_score(max_iter),
-                n.score,
-                n.visit_counter,
-                n.score / (n.visit_counter as f32)
-            );
         }
 
         algorithm.find_best_move()
@@ -44,9 +32,10 @@ struct MCTSAlgorithm {
 }
 impl MCTSAlgorithm {
     pub fn new(id: i32, grid: &Grid, win_length: u32) -> Self {
+        let nodes = Node::from_possible_moves(grid.get_possible_moves(id), grid, win_length);
         Self {
-            nodes: Node::from_possible_moves(grid.get_possible_moves(id), grid, win_length),
-            total_iterations: 0,
+            total_iterations: nodes.len() as u32,
+            nodes: nodes,
         }
     }
     pub fn select(&mut self, parent_visit_counter: u32) -> &mut Node {
@@ -95,6 +84,7 @@ struct Node {
     score: f32,
     visit_counter: u32,
     possible_moves: Vec<Size>,
+    win_result: Option<f32>,
 }
 impl Node {
     pub fn new(m: PlayerMove, mut grid: Grid, win_length: u32) -> Self {
@@ -112,16 +102,19 @@ impl Node {
             children: Vec::new(),
             score: if won {
                 1.0
-            } else if possible_moves.len() > 0 {
-                0.0
             } else {
-                0.5
+                0.0
             },
             visit_counter: 1,
             possible_moves: if won {
                 Vec::new()
             } else {
                 possible_moves
+            },
+            win_result: if won {
+                Some(1.0)
+            } else {
+                None
             },
         };
         s
@@ -161,18 +154,12 @@ impl Node {
         win_length: u32,
         mut grid: Grid
     ) -> (usize, f32) {
-        // println!("Children: {}", self.children.len());
-        print!(
-            ">>({},{})-{}",
-            self.moves.first().unwrap().position.x,
-            self.moves.first().unwrap().position.y,
-            self.score
-        );
-        if current_turn == 0 {
-            print!("#");
-        } else {
-            print!(" ");
+        self.visit_counter += 1;
+        if self.win_result.is_some() {
+            self.score += self.win_result.unwrap();
+            return (current_turn, self.win_result.unwrap());
         }
+
         grid.add_range(&self.moves);
 
         let selected = self.children
@@ -182,38 +169,36 @@ impl Node {
             );
 
         if selected.is_none() && self.possible_moves.len() == 0 {
-            // println!("Possible moves: {}", self.possible_moves.len());
             if self.possible_moves.len() == 0 {
-                println!("Reached end:{}", self.score);
                 return (current_turn, self.score);
             }
         } else if selected.is_none() || self.possible_moves.len() > 0 {
             drop(selected);
 
-            self.expand(players[current_turn], &grid, win_length);
+            self.expand(players[(current_turn + 1) % players.len()], &grid, win_length);
             let child = self.children.last_mut().unwrap();
 
             grid.add_range(&child.moves);
 
             if child.possible_moves.len() > 0 {
                 if child.score != 0.0 {
-                    println!("score:{}", child.score);
+                    println!("score:{}", child.score); // This shouldn't happen
                     panic!();
                 }
-                for _i in 0..10 {
-                    child.score +=
-                        Self::simulate(
-                            &mut grid,
-                            (current_turn + 1) % players.len(),
-                            (current_turn + 1) % players.len(),
-                            players,
-                            win_length
-                        ) / 10.0;
-                }
-            }
-            self.visit_counter += 1;
 
-            println!("Expanded:{}", child.score);
+                child.score = Self::simulate(
+                    &mut grid,
+                    (current_turn + 1) % players.len(),
+                    (current_turn + 1) % players.len(),
+                    players,
+                    win_length,
+                    child.possible_moves.clone()
+                );
+            }
+
+            self.score -= child.score;
+
+            // println!("Expanded:{}", child.score);
             return ((current_turn + 1) % players.len(), child.score);
         }
 
@@ -225,12 +210,11 @@ impl Node {
             grid
         );
 
-        if current_turn == result.0 || result.1 == 0.5 {
+        if current_turn == result.0 {
             self.score += result.1;
         } else {
             self.score -= result.1;
         }
-        self.visit_counter += 1;
 
         result
     }
@@ -239,12 +223,11 @@ impl Node {
         self_id: usize,
         mut current_turn: usize,
         players: &Vec<i32>,
-        win_length: u32
+        win_length: u32,
+        mut possible_moves: Vec<Size>
     ) -> f32 {
-        let mut score = 0.0;
-        let mut m = RandomBot::get_random_move(players[current_turn], grid);
-        while m.is_some() {
-            let pos = m.unwrap();
+        while possible_moves.len() > 0 {
+            let pos = possible_moves.remove(rand::thread_rng().gen_range(0..possible_moves.len()));
 
             grid.add(PlayerMove::new(players[current_turn], pos));
             let result = grid.check_win(&pos, win_length);
@@ -254,14 +237,12 @@ impl Node {
             if result.len() > 0 && current_turn == self_id {
                 return 1.0;
             } else if result.len() > 0 {
-                return 0.0;
+                return -1.0;
             }
 
             current_turn = (current_turn + 1) % players.len();
-
-            m = RandomBot::get_random_move(players[current_turn], grid);
         }
 
-        0.5
+        0.0
     }
 }
