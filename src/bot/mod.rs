@@ -1,12 +1,13 @@
 mod botlogic;
 mod random;
 mod minmax;
+mod mcts;
 
 use std::{ sync::{ mpsc::{ self, Receiver }, Arc, Mutex }, thread::Builder };
 
 use crate::{ game::Game, net::{ broadcast_players, MessageEvent }, player::Player };
 
-use self::{ minmax::MinMaxBot, random::RandomBot, botlogic::BotLogic };
+use self::{ botlogic::BotLogic, mcts::MCTSBot, minmax::MinMaxBot, random::RandomBot };
 
 pub(crate) struct Bot {
     player: Arc<Mutex<Player>>,
@@ -48,6 +49,7 @@ impl Bot {
     fn get_bot_logic(s: &str) -> Box<dyn BotLogic> {
         match s {
             "minmax" => { Box::new(MinMaxBot::new()) }
+            "mcts" => { Box::new(MCTSBot::new()) }
             _ => { Box::new(RandomBot::new()) }
         }
     }

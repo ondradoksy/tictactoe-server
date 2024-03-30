@@ -1,11 +1,6 @@
 use crate::{ bot::botlogic::BotLogic, game::Game, grid::Grid, player_move::PlayerMove, Size };
 
 pub(crate) struct MinMaxBot {}
-impl MinMaxBot {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 impl BotLogic for MinMaxBot {
     fn generate_move(&self, id: i32, game: &Game) -> Size {
         Self::get_best_move(id, game, 5).unwrap_or(Size::new(0, 0))
@@ -15,6 +10,9 @@ impl BotLogic for MinMaxBot {
     }
 }
 impl MinMaxBot {
+    pub fn new() -> Self {
+        Self {}
+    }
     fn get_best_move(id: i32, game: &Game, depth: u32) -> Option<Size> {
         let moves = game.grid.get_possible_moves(id);
 

@@ -193,7 +193,10 @@ pub(crate) fn broadcast(players: &Arc<Mutex<Vec<Arc<Mutex<Player>>>>>, message: 
     }
 }
 pub(crate) fn send_to_player(player: &Arc<Mutex<Player>>, message: &MessageEvent) {
-    player.lock().unwrap().tx.send(message.clone()).expect("Unable to send message");
+    let result = player.lock().unwrap().tx.send(message.clone());
+    if result.is_err() {
+        println!("Unable to send message {}", result.err().unwrap());
+    }
 }
 
 #[derive(Serialize)]

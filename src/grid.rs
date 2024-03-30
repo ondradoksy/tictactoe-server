@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::{ common::Size, player_move::PlayerMove };
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub(crate) struct Grid {
     pub size: Size,
     moves: Vec<PlayerMove>,
@@ -12,7 +12,7 @@ impl Grid {
     pub fn new(size: Size) -> Self {
         Self {
             size: size,
-            moves: Vec::new(),
+            moves: Vec::with_capacity((size.x * size.y) as usize),
         }
     }
     pub fn get_pos(&self, pos: &Size) -> Option<i32> {
@@ -185,6 +185,18 @@ impl Grid {
                 let pos = Size::new(i, j);
                 if self.is_empty(&pos) {
                     moves.push(PlayerMove::new(id, pos));
+                }
+            }
+        }
+        moves
+    }
+    pub fn get_possible_moves_size(&self) -> Vec<Size> {
+        let mut moves = Vec::new();
+        for i in 0..self.size.x {
+            for j in 0..self.size.y {
+                let pos = Size::new(i, j);
+                if self.is_empty(&pos) {
+                    moves.push(pos);
                 }
             }
         }
