@@ -24,7 +24,7 @@ use crate::net::{
     Status,
 };
 
-/// A WebSocket echo server
+/// Initializes server variables. Listens for incoming connection and creates new threads to handle connected players.
 fn main() {
     let args: Vec<String> = env::args().collect();
     let listen_ip = if args.len() > 1 { args[1].as_str() } else { "0.0.0.0:9001" };
@@ -64,6 +64,7 @@ fn main() {
     }
 }
 
+/// Handles all communication with a player.
 fn handle_connection(
     stream: TcpStream,
     player_id_counter: Arc<Mutex<i32>>,
@@ -337,6 +338,7 @@ fn handle_connection(
     }
 }
 
+/// Returns the remote IP Address of a &[`TcpStream`] as a [`String`]
 fn get_addr(stream: &TcpStream) -> String {
     stream.peer_addr().unwrap().to_string()
 }
