@@ -20,14 +20,14 @@ impl MinMaxBot {
             return None;
         }
 
-        let depth: u32 = Self::get_depth(
+        let depth: u32 = get_depth(
             moves.len().try_into().expect("Could not convert usize to u32"),
             100000
         ) as u32;
         println!("MINMAX | Chosen depth: {}", depth);
 
         let mut move_counter = 0;
-        let total = Self::get_complexity(
+        let total = get_complexity(
             moves.len().try_into().expect("Could not convert usize to u32"),
             depth.into()
         );
@@ -139,25 +139,43 @@ impl MinMaxBot {
         }
         (high_score, best_move)
     }
+}
 
-    fn get_complexity(num: u128, depth: u128) -> u128 {
-        if depth <= 0 {
-            return 1;
-        }
-        match num {
-            0 => 1,
-            1 => 1,
-            _ => num * Self::get_complexity(num - 1, depth - 1),
-        }
+fn get_complexity(num: u128, depth: u128) -> u128 {
+    if depth <= 0 {
+        return 1;
     }
-    fn get_depth(num: u128, complexity: u128) -> u128 {
-        let mut depth = 1;
-        let mut current_complexity = num;
-        while depth < num && current_complexity * (num - depth) < complexity {
-            current_complexity *= num - depth;
-            depth += 1;
-        }
+    match num {
+        0 => 1,
+        1 => 1,
+        _ => num * get_complexity(num - 1, depth - 1),
+    }
+}
+fn get_depth(num: u128, complexity: u128) -> u128 {
+    let mut depth = 1;
+    let mut current_complexity = num;
+    while depth < num && current_complexity * (num - depth) < complexity {
+        current_complexity *= num - depth;
+        depth += 1;
+    }
 
-        return depth;
+    return depth;
+}
+
+#[test]
+fn test_complexity() {
+    for i in 1..10 {
+        for j in 1..10 {
+            let num = i * 10;
+            let max_complexity = j * 100000;
+            let depth = get_depth(num, max_complexity);
+            let complexity = get_complexity(i * 10, depth);
+            assert!(
+                complexity <= max_complexity,
+                "{} <= {} is not true!",
+                complexity,
+                max_complexity
+            );
+        }
     }
 }
