@@ -23,6 +23,7 @@ pub(crate) struct Player {
     image: Option<String>,
     #[serde(skip_serializing)]
     pub is_bot: bool,
+    pub score: u32,
 }
 impl Player {
     pub fn new(id: i32, tx: Sender<MessageEvent>) -> Self {
@@ -35,6 +36,7 @@ impl Player {
             name: format!("Player_{}", id),
             image: None,
             is_bot: false,
+            score: 0,
         }
     }
     pub fn new_bot(id: i32, tx: Sender<MessageEvent>) -> Self {
@@ -47,6 +49,7 @@ impl Player {
             name: format!("Bot_{}", id),
             image: None,
             is_bot: true,
+            score: 0,
         }
     }
     pub fn join_game(

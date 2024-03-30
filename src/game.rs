@@ -105,7 +105,10 @@ impl Game {
                             game_guard.broadcast_move(&mv, &players);
                             game_guard.grid.add(mv);
                         }
-                        // TODO: Implement score
+
+                        println!("Adding score to player");
+                        msg.player.lock().unwrap().score += 1;
+                        broadcast_players(&players);
                     }
 
                     if game_guard.grid.get_possible_moves(0).len() == 0 {
